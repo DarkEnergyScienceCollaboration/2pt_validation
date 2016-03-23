@@ -7,6 +7,9 @@ import h5py
 import healpy
 import pylab
 import numpy.random as npr
+from astropy.cosmology import Planck15 as co
+import astropy.constants as const
+import astropy.units as u
 from scipy.integrate import quad
 
 def writeDists(o):
@@ -17,21 +20,34 @@ def writeDists(o):
     Density is ~constant comoving density 1.5e-3 h^3 Mpc^-3, sigma_z/(1+z) 
     ~0.01, and bias is 2-2.5ish.
     """
+
+    zmin=0.01
+    zmax=1.2
+    Nz=1000
+    rho_comoving=1.5e-3
+    #Nz shaping
+    zshape=1.0
+    
     d=o.outpath
     fn=open (d+"/Nz.txt",'w')
     fb=open (d+"/bz.txt",'w')
     pi=np.pi
-    for z in np.linspace(0.01, 1.2,1000):
+    for z in np.linspace(zmin, zmax,Nz):
             fb.write("%g %g\n"%(z,2.2))
             ## for density, need to convert Mpc/h into n/sqdeg/dz
             ## c over H(z) for Mpc/h units
-            coHz=lambda z:3000./np.sqrt(0.3*(1+z)**3+0.7)
-            r=quad(coHz,0.,z)[0]
+            coHz=(const.c/co.H(z)).to(u.Mpc).value*co.h
+            # radius in Mpc/h
+            r=co.comoving_distance(z).to("Mpc").value*co.h
             #volume of 1sq * dz
             # 4pir^2 * (1deg/rad)**2 * dr/dz
             # hMpc^3 per dz per 1sqd
-            vrat=r**2 * (pi/180.)**2  * coHz(z) 
-            dens=1.5e-3*vrat
+            vrat=r**2 * (pi/180.)**2  * coHz
+            dens=rho_comoving*vrat
+            ## shape distribution to avoid sharep cut
+            if (z>zshape):
+                sup=(z-zshape)/(zmax-zshape)
+                dens*=np.exp(-10*sup**2)
             fn.write("%g %g\n"%(z,dens))
 
 def execCoLoRe(i,o):
