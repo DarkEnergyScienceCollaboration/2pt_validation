@@ -45,6 +45,7 @@ for i in range(o.Nr):
         meta['colore_'+k]=v
     meta['mkcat_git_version']=get_git_revision_short_hash()
     meta['timestamp']=str(datetime.datetime.now())
+    meta['realspace']=o.realspace
     cat=fc.Catalog(N, fields=['ra','dec','z'],dNdz=dNdz, bz=bz,
                     meta=meta)
     cat['ra']=gals['RA']
