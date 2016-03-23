@@ -43,4 +43,17 @@ There are three basic directories:
 * validate_CoLoRe : a very simply script for CoLoRe validation, a 0th order test so that we don't issue people junk
 * fastcat_CoLoRe : produce fastcat catalogs from CoLoRe outputs. Cuts the data, adds PZ errors, etc.
 
+# NERSC resources
+
+Files relevant to this project are stored under 
+```
+/project/projectdirs/lsst/LSSWG
+```
+on NERSC systems (e.g. cori)
+
+The following subdirectories are available:
+* LNMocks -- actual mocks, created in subdirectories tagged by date (and maybe something else)
+* HumnaWindowFunctions -- two maps provided by Humna, to be used with issue #1
+
+
 
