@@ -3,7 +3,6 @@
 #
 import os, sys
 import numpy as np
-import numpy.random as npr
 try:
     from astropy.cosmology import Planck15 as co
 except:
@@ -71,12 +70,12 @@ def execCoLoRe(i,o):
         open(dr+"/script.sm","w").write("""#!/bin/bash -l
 #SBATCH --partition regular
 #SBATCH --nodes {nodes}
-#SBATCH --time=00:30:00
+#SBATCH --time={time}
 #SBATCH --job-name=CoLoRe_{i}
 #SBATCH --account=m1727
 cd {dr}
 srun -n {cores} {cpath}/CoLoRe ./params.ini >slurm.log 2>slurm.err
-""".format(nodes=o.nodes, cores=o.nodes*32, cpath=o.cpath, dr=dr,i=i))
+""".format(nodes=o.nodes, cores=o.nodes*32, cpath=o.cpath, dr=dr,i=i,time=o.time))
         os.system("sbatch "+dr+"/script.sm")
     else:
         print "Unknown exe"
