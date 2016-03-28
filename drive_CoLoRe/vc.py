@@ -10,14 +10,14 @@ if (os.environ.has_key("COLORE_EXEC")):
 else:
     cpath="../CoLoRe/"
 
-opath="/astro/u/anze/Data/colore/"
+opath="/project/projectdirs/lsst/LSSWG/colore_raw"
 
 parser.add_option("--cpath", dest="cpath", default=cpath,
                   help="Path to CoLoRe (will add /CoLoRe for executable)", type="string")
 parser.add_option("--outpath", dest="outpath", default=opath,
                   help="Path to output path", type="string")
-parser.add_option("--stype", dest="stype", default="bnl",
-                  help="Submission type (exec,wq)", type="string")
+parser.add_option("--stype", dest="stype", default="nersc",
+                  help="Submission type (exec,wq,nersc)", type="string")
 parser.add_option("--N", dest="Nr", default=10,
                   help="Number of realizations", type="int")
 parser.add_option("--Ngrid", dest="Ngrid", default=128,

@@ -3,11 +3,12 @@
 #
 import os, sys
 import numpy as np
-import h5py
-import healpy
-import pylab
 import numpy.random as npr
-from astropy.cosmology import Planck15 as co
+try:
+    from astropy.cosmology import Planck15 as co
+except:
+    from astropy.cosmology import Planck13 as co
+    print "Warning: using Planck13 cosmology rather than Planck15!"
 import astropy.constants as const
 import astropy.units as u
 from scipy.integrate import quad
@@ -66,6 +67,17 @@ def execCoLoRe(i,o):
             cores=o.nodes*12, cpath=o.cpath, dr=dr)
         print exe
         os.system(exe)
+    elif o.stype=="nersc":
+        open(dr+"/script.sm","w").write("""#!/bin/bash -l
+#SBATCH --partition regular
+#SBATCH --nodes {nodes}
+#SBATCH --time=00:30:00
+#SBATCH --job-name=CoLoRe_{i}
+#SBATCH --account=m1727
+cd {dr}
+srun -n {cores} {cpath}/CoLoRe ./params.ini >slurm.log 2>slurm.err
+""".format(nodes=o.nodes, cores=o.nodes*32, cpath=o.cpath, dr=dr,i=i))
+        os.system("sbatch "+dr+"/script.sm")
     else:
         print "Unknown exe"
 
