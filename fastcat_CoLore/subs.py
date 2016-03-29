@@ -24,13 +24,14 @@ def readColore(path):
                     pass
             idic[x]=y
     data=[]
-    for fname in glob.glob(path+"/out_*.h5"):
+    flist=glob.glob(path+"/out_*.h5")
+    data=[]
+    for fname in sorted(flist): 
+        print "     ... reading : ",fname, "\r",
         da=h5py.File(fname)
-        cdata=da['sources'].value
-        if len(data)==0:
-            data=cdata
-        else:
-            data=np.concatenate((data,cdata),axis=0)
+        data.append(da['sources'].value)
+    data=np.concatenate(data,axis=0)
+    print
     return data,idic
         
     
