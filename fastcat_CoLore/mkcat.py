@@ -7,17 +7,32 @@ import numpy as np
 from optparse import OptionParser
 import datetime
 
+#default in path
 ipath="/project/projectdirs/lsst/LSSWG/colore_raw"
+#default out path
 opath="/project/projectdirs/lsst/LSSWG/LNMocks"
+#path to humna depth maps
+hpath="/project/projectdirs/lsst/LSSWG/HumnaDepthVariations"
+
 parser = OptionParser()
 parser.add_option("--ipath", dest="ipath", default=ipath,
                   help="Path to colore output", type="string")
 parser.add_option("--opath", dest="opath", default=opath,
                   help="Path to colore output", type="string")
+parser.add_option("--hpath", dest="hpath", default=hpath,
+                  help="Path to humna depth maps", type="string")
 parser.add_option("--N", dest="Nr", default=10,
                   help="Number of realizations", type="int")
 parser.add_option("--Nstart", dest="Nstart", default=0,
                   help="starting realization", type="int")
+parser.add_option("--wftype",dest="wftype",type="string",
+                  help="window func type [radecbcut,healpix]",
+                  default="radecbcut")
+parser.add_option("--humnamap", dest="humnamap", type="string",
+                  help="humna map type [nodither, reprandom]", default="nodither")
+parser.add_option("--dlogndmlim", dest="dlogndmlim", type="float",
+                  help="change in number of sources as a function of depth",
+                  default=0.1)
 parser.add_option("--decmin", dest="decmin", default=-70,
                   help="minimum declination", type="float")
 parser.add_option("--decmax", dest="decmax", default=10,
@@ -58,9 +73,10 @@ for i in range(o.Nstart,o.Nr):
         cat['z']=gals['Z_COSMO']+gals['DZ_RSD']
 
     ## first apply window function
+    print "Creating window..."
+    wfunc=getWindowFunc(o)
     print "Applying window..."
-    cat.setWindow(fc.window.WindowDecBcut(o.decmin, o.decmax, o.bcut),
-                  apply_to_data=True)
+    cat.setWindow(wfunc, apply_to_data=True)
     ## next apply photoz
     print "Applying photoz..."
     cat.setPhotoZ(fc.photoz.PhotoZGauss(0.01),apply_to_data=True)

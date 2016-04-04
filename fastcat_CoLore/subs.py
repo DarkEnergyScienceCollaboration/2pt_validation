@@ -1,4 +1,6 @@
 import numpy as np
+import fastcat as fc
+
 import glob 
 import h5py
 
@@ -38,3 +40,32 @@ def readColore(path):
 def get_git_revision_short_hash():
     import subprocess
     return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+
+def getWindowFunc(o):
+    if o.wftype=="radecbcut":
+        wfunc= fc.window.WindowDecBcut(o.decmin, o.decmax, o.bcut)
+    elif o.wftype=="healpix":
+        if o.humnamap=="nodither":
+            mapfn="/coaddM5Data_masked_rBand_NoDither.npz"
+        elif o.humnamap=="reprandom":
+            mapfn=+"/coaddM5Data_masked_rBand_RepulsiveRandomDitherFieldPerVisit.npz"
+        else:
+            print "Unknown humna type map"
+            stop()
+        mapfn=o.hpath+mapfn
+        print "     Reading mapfn",mapfn,"..."
+        hmap=np.load(mapfn)
+        mask=hmap['mask']
+        vals=hmap['metricValues']
+        mx=vals.max()
+        vals=np.exp(-o.dlogndmlim*(mx-vals))
+        vals[mask]=0.0
+        amask=np.where(mask==False)
+        cmin,cmax,cmean=vals[amask].min(), vals[amask].max(), vals[amask].mean()
+        print "Window func min, max, mean:",cmin,cmax,cmean
+        info="HumnaDepthVariations map=%s dlogndmlim=%f"%(o.humnamap,o.dlogndmlim)
+        wfunc=fc.window.WindowHealpix(vals,info)
+    else:
+        print "Bad WF type:",o.wftype
+        stop()
+    return wfunc
