@@ -6,6 +6,7 @@ import fastcat as fc
 import numpy as np 
 from optparse import OptionParser
 import datetime
+import os
 
 #default in path
 ipath="/project/projectdirs/lsst/LSSWG/colore_raw"
@@ -19,6 +20,8 @@ parser.add_option("--ipath", dest="ipath", default=ipath,
                   help="Path to colore output", type="string")
 parser.add_option("--opath", dest="opath", default=opath,
                   help="Path to colore output", type="string")
+parser.add_option("--oextra", dest="oextra", default="",
+                  help="Extra string to be put in output path", type="string")
 parser.add_option("--hpath", dest="hpath", default=hpath,
                   help="Path to humna depth maps", type="string")
 parser.add_option("--N", dest="Nr", default=10,
@@ -27,7 +30,7 @@ parser.add_option("--Nstart", dest="Nstart", default=0,
                   help="starting realization", type="int")
 parser.add_option("--wftype",dest="wftype",type="string",
                   help="window func type [radecbcut,healpix]",
-                  default="radecbcut")
+                  default="healpix")
 parser.add_option("--humnamap", dest="humnamap", type="string",
                   help="humna map type [nodither, reprandom]", default="nodither")
 parser.add_option("--dlogndmlim", dest="dlogndmlim", type="float",
@@ -46,6 +49,7 @@ parser.add_option("--realspace", dest="realspace", default=False,
 
 bz=np.genfromtxt(o.ipath+'/bz.txt', dtype=None, names=["z","bz"])
 dNdz=np.genfromtxt(o.ipath+'/Nz.txt', dtype=None, names=["z","dNdz"])
+fopath=None
 
 for i in range(o.Nstart,o.Nr):
     print "Reading set ",i
@@ -80,8 +84,18 @@ for i in range(o.Nstart,o.Nr):
     ## next apply photoz
     print "Applying photoz..."
     cat.setPhotoZ(fc.photoz.PhotoZGauss(0.01),apply_to_data=True)
+    ## now create full output path
+    if fopath is None:
+        dt=datetime.datetime.now()
+        daystr="%02i%02i%02i"%(dt.year-2000,dt.month,dt.day)
+        fopath=o.opath+"/"+daystr+"+"+cat.photoz.NameString()+"+"+cat.window.NameString()
+        if len(o.oextra)>0:
+            fopath+="+"+o.oextra
+        if not os.path.exists(fopath):
+            os.makedirs(fopath)
     ## write the actual catalog
-    print "Writing..."
-    cat.writeH5(o.opath+'/catalog%i.h5'%(i))
+    fname=fopath+'/catalog%i.h5'%(i)
+    print "Writing "+fname+" ..."
+    cat.writeH5(fname)
 
 

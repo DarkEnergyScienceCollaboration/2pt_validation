@@ -48,7 +48,7 @@ def getWindowFunc(o):
         if o.humnamap=="nodither":
             mapfn="/coaddM5Data_masked_rBand_NoDither.npz"
         elif o.humnamap=="reprandom":
-            mapfn=+"/coaddM5Data_masked_rBand_RepulsiveRandomDitherFieldPerVisit.npz"
+            mapfn="/coaddM5Data_masked_rBand_RepulsiveRandomDitherFieldPerVisit.npz"
         else:
             print "Unknown humna type map"
             stop()
@@ -64,7 +64,8 @@ def getWindowFunc(o):
         cmin,cmax,cmean=vals[amask].min(), vals[amask].max(), vals[amask].mean()
         print "Window func min, max, mean:",cmin,cmax,cmean
         info="HumnaDepthVariations map=%s dlogndmlim=%f"%(o.humnamap,o.dlogndmlim)
-        wfunc=fc.window.WindowHealpix(vals,info)
+        shortinfo=o.humnamap+"_"+str(o.dlogndmlim)
+        wfunc=fc.window.WindowHealpix(vals,info,shortinfo)
     else:
         print "Bad WF type:",o.wftype
         stop()
