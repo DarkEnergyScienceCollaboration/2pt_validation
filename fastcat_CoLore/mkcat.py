@@ -89,7 +89,9 @@ if (o.realspace):
     out_extra+="+realspace"
 if (o.ztrue):
     out_extra+="+ztrue"
-
+if (o.Ngals>0):
+    out_extra+="+subsamp_"+str(o.Ngals)
+    
 for i in range(o.Nstart,o.Nr):
     if (i%msize==mrank):
         print mranks, "Reading set ",i
