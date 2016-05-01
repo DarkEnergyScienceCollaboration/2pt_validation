@@ -1,3 +1,4 @@
+
 import numpy as np
 import fastcat as fc
 
@@ -70,3 +71,15 @@ def getWindowFunc(o):
         print "Bad WF type:",o.wftype
         stop()
     return wfunc
+
+def getPhotoZ(o):
+    if o.pztype=="none":
+        pz = fc.photoz.PhotoZBase()
+    elif o.pztype=="gauss":
+        pz = fc.photoz.PhotoZGauss(o.pz_sigma)
+    elif o.pztype=="doublegauss":
+        pz = fc.photoz.PhotoZDoubleGauss(o.pz_sigma,o.pz_Acat,o.pz_zcat,o.pz_sigmacat)
+    else:
+        print "Bad PZ type:",o.pztype
+        stop()
+    return pz
