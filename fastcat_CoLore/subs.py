@@ -29,12 +29,12 @@ def readColore(path):
     data=[]
     flist=glob.glob(path+"/out_*.h5")
     data=[]
-    for fname in sorted(flist): 
+    for fname in flist: 
         print "     ... reading : ",fname, "\r",
         da=h5py.File(fname)
         data.append(da['sources'].value)
     data=np.concatenate(data,axis=0)
-    print
+    print "Read"
     return data,idic
         
     

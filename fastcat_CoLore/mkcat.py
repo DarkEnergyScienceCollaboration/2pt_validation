@@ -30,6 +30,8 @@ parser.add_option("--N", dest="Nr", default=10,
                   help="Number of realizations", type="int")
 parser.add_option("--Nstart", dest="Nstart", default=0,
                   help="starting realization", type="int")
+parser.add_option("--Ngals", dest="Ngals", default=0,
+                  help="If non-zero, subsample to this number of gals", type="int")
 ## WF options
 
 parser.add_option("--wftype",dest="wftype",type="string",
@@ -96,6 +98,15 @@ for i in range(o.Nstart,o.Nr):
         if (len(gals)==0):
             print mranks, "No galaxies!"
             stop()
+        # subsample if required    
+        if (o.Ngals>0):
+            print "Subsampling to ",o.Ngals
+            # interestingly, this is superslow
+            #indices=np.random.choice(xrange(len(gals)),o.Ngals, replace=False)
+            # this risks repetition, but OK
+            indices=np.random.randint(0,len(gals),o.Ngals)
+            gals=gals[indices]
+            print "Done"
 
         # start catalog with known dNdz and bz
         N=len(gals)
