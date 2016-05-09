@@ -52,14 +52,16 @@ parser.add_option("--wf_bcut", dest="bcut", default=5,
 ## PZ options
 
 parser.add_option("--pztype",dest="pztype",type="string",
-                  help="photo z type [none,gauss, doublegauss]",
+                  help="photo z type [none,gauss, doublegauss, hiddenvar]",
                   default="gauss")
 parser.add_option("--pz_sigma", dest="pz_sigma", default=0.01,
                   help="PZ: Guass sigma for (1+z)", type="float")
 parser.add_option("--pz_Acat", dest="pz_Acat", default=0.2,
                   help="PZ: A catastrophic", type="float")
-parser.add_option("--pz_zcat", dest="pz_zcat", default=0.4,
+parser.add_option("--pz_zcat", dest="pz_zcat", default=0.3,
                   help="PZ: z catastrophic", type="float")
+parser.add_option("--pz_zstep", dest="pz_zstep", default=0.6,
+                  help="PZ: z step if hiddenvar", type="float")
 parser.add_option("--pz_sigmacat", dest="pz_sigmacat", default=0.05,
                   help="PZ: sigma catastrophic", type="float")
 

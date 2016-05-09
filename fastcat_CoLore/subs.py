@@ -79,6 +79,8 @@ def getPhotoZ(o):
         pz = fc.photoz.PhotoZGauss(o.pz_sigma)
     elif o.pztype=="doublegauss":
         pz = fc.photoz.PhotoZDoubleGauss(o.pz_sigma,o.pz_Acat,o.pz_zcat,o.pz_sigmacat)
+    elif o.pztype=="hiddenvar":
+        pz = fc.photoz.PhotoZHiddenVar(o.pz_sigma,o.pz_zcat,o.pz_zstep)
     else:
         print "Bad PZ type:",o.pztype
         stop()
