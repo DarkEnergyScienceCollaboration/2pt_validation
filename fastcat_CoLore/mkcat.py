@@ -14,8 +14,6 @@ from mpi4py import MPI
 ipath="/project/projectdirs/lsst/LSSWG/colore_raw"
 #default out path
 opath="/project/projectdirs/lsst/LSSWG/LNMocks"
-#path to humna depth maps
-hpath="/project/projectdirs/lsst/LSSWG/HumnaDepthVariations"
 
 parser = OptionParser()
 parser.add_option("--ipath", dest="ipath", default=ipath,
@@ -24,48 +22,17 @@ parser.add_option("--opath", dest="opath", default=opath,
                   help="Path to colore output", type="string")
 parser.add_option("--oextra", dest="oextra", default="",
                   help="Extra string to be put in output path", type="string")
-parser.add_option("--hpath", dest="hpath", default=hpath,
-                  help="Path to humna depth maps", type="string")
 parser.add_option("--N", dest="Nr", default=10,
                   help="Number of realizations", type="int")
 parser.add_option("--Nstart", dest="Nstart", default=0,
                   help="starting realization", type="int")
 parser.add_option("--Ngals", dest="Ngals", default=0,
                   help="If non-zero, subsample to this number of gals", type="int")
-## WF options
-
-parser.add_option("--wftype",dest="wftype",type="string",
-                  help="window func type [radecbcut,healpix]",
-                  default="healpix")
-parser.add_option("--wf_humnamap", dest="humnamap", type="string",
-                  help="humna map type [nodither, reprandom]", default="nodither")
-parser.add_option("--wf_dlogndmlim", dest="dlogndmlim", type="float",
-                  help="change in number of sources as a function of depth",
-                  default=0.1)
-parser.add_option("--wf_decmin", dest="decmin", default=-70,
-                  help="minimum declination", type="float")
-parser.add_option("--wf_decmax", dest="decmax", default=10,
-                  help="maximum declination", type="float")
-parser.add_option("--wf_bcut", dest="bcut", default=5,
-                  help="Cut in galactic b", type="float")
-
+## WF and PZ options
+fc.window.registerOptions(parser)
 ## PZ options
-
-parser.add_option("--pztype",dest="pztype",type="string",
-                  help="photo z type [none,gauss, doublegauss, hiddenvar]",
-                  default="gauss")
-parser.add_option("--pz_sigma", dest="pz_sigma", default=0.01,
-                  help="PZ: Guass sigma for (1+z)", type="float")
-parser.add_option("--pz_Acat", dest="pz_Acat", default=0.2,
-                  help="PZ: A catastrophic", type="float")
-parser.add_option("--pz_zcat", dest="pz_zcat", default=0.3,
-                  help="PZ: z catastrophic", type="float")
-parser.add_option("--pz_zstep", dest="pz_zstep", default=0.6,
-                  help="PZ: z step if hiddenvar", type="float")
-parser.add_option("--pz_sigmacat", dest="pz_sigmacat", default=0.05,
-                  help="PZ: sigma catastrophic", type="float")
-
-
+fc.photoz.registerOptions(parser)
+## other options
 parser.add_option("--realspace", dest="realspace", default=True,
                   help="Realspace instead of redshift space",action="store_true")
 parser.add_option("--ztrue", dest="ztrue", default=False,
@@ -138,12 +105,11 @@ for i in range(o.Nstart,o.Nr):
 
         ## first apply window function
         print mranks, "Creating window..."
-        wfunc=getWindowFunc(o)
+        wfunc=fc.window.getWindowFunc(o)
         print mranks, "Applying window..."
         cat.setWindow(wfunc, apply_to_data=True)
-
         ## next apply photoz
-        pz=getPhotoZ(o)
+        pz=fc.photoz.getPhotoZ(o)
         print mranks, "Applying photoz..."
         cat.setPhotoZ(pz,apply_to_data=True)
         ## now create full output path
