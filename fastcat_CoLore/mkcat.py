@@ -3,7 +3,7 @@ import sys
 from subs import *
 sys.path=["."]+sys.path
 import fastcat as fc
-import numpy as np 
+import numpy as np
 from optparse import OptionParser
 import datetime
 import os
@@ -13,7 +13,6 @@ import os
 ipath="/project/projectdirs/lsst/LSSWG/colore_raw"
 #default out path
 opath="/project/projectdirs/lsst/LSSWG/LNMocks"
-
 parser = OptionParser()
 parser.add_option("--ipath", dest="ipath", default=ipath,
                   help="Path to colore output", type="string")
@@ -29,7 +28,10 @@ parser.add_option("--Ngals", dest="Ngals", default=0,
                   help="If non-zero, subsample to this number of gals", type="int")
 parser.add_option("--mpi", dest="use_mpi", default=False,
                   help="If used, use mpi4py for parallelization ",action="store_true")
-
+parser.add_option("--Nstars", dest="Nstars", type="int",default=0,
+                  help="If Nstars>0, subsample to this number of stars. If Nstars=-1 use the full stellar catalog")
+parser.add_option("--sfile",dest='star_path',type="string", default=None,
+                  help="Input stellar catalog")
 ## WF and PZ options
 fc.window.registerOptions(parser)
 ## PZ options
@@ -68,7 +70,7 @@ if (o.ztrue):
     out_extra+="+ztrue"
 if (o.Ngals>0):
     out_extra+="+subsamp_"+str(o.Ngals)
-    
+
 for i in range(o.Nstart,o.Nr):
     if (i%msize==mrank):
         print mranks, "Reading set ",i
@@ -77,7 +79,7 @@ for i in range(o.Nstart,o.Nr):
         if (len(gals)==0):
             print mranks, "No galaxies!"
             stop()
-        # subsample if required    
+        # subsample if required
         if (o.Ngals>0):
             print "Subsampling to ",o.Ngals
             # interestingly, this is superslow
@@ -89,6 +91,17 @@ for i in range(o.Nstart,o.Nr):
 
         # start catalog with known dNdz and bz
         N=len(gals)
+        if(o.Nstars>0 or o.Nstars==-1):
+            stars = readStars(o.star_path)
+            print mranks, len(stars), "stars read."
+            if(len(stars)==0):
+                print mranks, "No stars!"
+                stop()
+            if(o.Nstars>0):
+                print "Subsampling to ",o.Nstars, " stars"
+                indices = np.random.randint(0,len(stars),o.Nstars)
+                stars=stars[indices]
+            N=N+len(stars)
         meta={}
         for k,v in inif.items():
             meta['colore_'+k]=v
@@ -100,17 +113,29 @@ for i in range(o.Nstart,o.Nr):
             fields.append('z_true')
         cat=fc.Catalog(N, fields=fields,dNdz=dNdz, bz=bz,
                         meta=meta)
-        cat['ra']=gals['RA']
-        cat['dec']=gals['DEC']
-        if (o.realspace):
-            cat['z']=gals['Z_COSMO']
-        else:
-            cat['z']=gals['Z_COSMO']+gals['DZ_RSD']
-        if (o.ztrue):
+        if(o.Nstars==0):
+            cat['ra']=gals['RA']
+            cat['dec']=gals['DEC']
+            if (o.realspace):
+                cat['z']=gals['Z_COSMO']
+            else:
+                cat['z']=gals['Z_COSMO']+gals['DZ_RSD']
+            if (o.ztrue):
             # make a copy of z_true various PZ algos
             # will overwrite it
-            cat['z_true']=cat['z']
-
+                cat['z_true']=cat['z']
+        if(o.Nstars>0 or o.Nstars==-1):
+            cat['ra']=np.append(gals['RA'],stars['RA'])
+            cat['dec']=np.append(gals['DEC'],stars['DEC'])
+            if (o.realspace):
+                cat['z']=np.append(gals['Z_COSMO'],stars['Z_COSMO'])
+            else:
+                cat['z']=np.append(gals['Z_COSMO']+gals['DZ_RSD'],stars['Z_COSMO']+stars['DZ_RSD'])
+            if(o.ztrue):
+                cat['z_true']=cat['z']
+        else:
+            print "Invalid number of stars Nstars>=0 or Nstars=-1"
+            stop()
         ## first apply window function
         print mranks, "Creating window..."
         wfunc=fc.window.getWindowFunc(o)
@@ -131,5 +156,5 @@ for i in range(o.Nstart,o.Nr):
         fname=fopath+'/catalog%i.h5'%(i)
         print mranks, "Writing "+fname+" ..."
         cat.writeH5(fname)
-
-comm.Barrier()
+if o.use_mpi:
+    comm.Barrier()
