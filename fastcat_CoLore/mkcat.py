@@ -7,8 +7,7 @@ import numpy as np
 from optparse import OptionParser
 import datetime
 import os
-from mpi4py import MPI
-
+## import mpi only if we actually need it
 
 #default in path
 ipath="/project/projectdirs/lsst/LSSWG/colore_raw"
@@ -28,6 +27,9 @@ parser.add_option("--Nstart", dest="Nstart", default=0,
                   help="starting realization", type="int")
 parser.add_option("--Ngals", dest="Ngals", default=0,
                   help="If non-zero, subsample to this number of gals", type="int")
+parser.add_option("--mpi", dest="use_mpi", default=False,
+                  help="If used, use mpi4py for parallelization ",action="store_true")
+
 ## WF and PZ options
 fc.window.registerOptions(parser)
 ## PZ options
@@ -44,12 +46,18 @@ bz=np.genfromtxt(o.ipath+'/bz.txt', dtype=None, names=["z","bz"])
 dNdz=np.genfromtxt(o.ipath+'/Nz.txt', dtype=None, names=["z","dNdz"])
 fopath=None
 
-comm = MPI.COMM_WORLD
-mrank = comm.Get_rank()
-mranks = "["+str(mrank)+"]:"
-msize = comm.Get_size()
-if (mrank==0):
-    print "MPI Size:", msize
+if o.use_mpi:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    mrank = comm.Get_rank()
+    mranks = "["+str(mrank)+"]:"
+    msize = comm.Get_size()
+    if (mrank==0):
+        print "MPI Size:", msize
+else:
+    mrank=0
+    msize=1
+    mranks = ""
 
 out_extra=""
 if len(o.oextra)>0:
