@@ -7,12 +7,17 @@ import numpy as np
 from optparse import OptionParser
 import datetime
 import os
-## import mpi only if we actually need it
 
+if os.environ.has_key('DESC_LSS_ROOT'):
+    root=os.environ['DESC_LSS_ROOT']
+else:
+    root="/project/projectdirs/lsst/LSSWG"
 #default in path
-ipath="/project/projectdirs/lsst/LSSWG/colore_raw"
+ipath=root+"/colore_raw"
 #default out path
-opath="/project/projectdirs/lsst/LSSWG/LNMocks"
+opath=root+"/LNMocks"
+#default stellar path
+
 parser = OptionParser()
 parser.add_option("--ipath", dest="ipath", default=ipath,
                   help="Path to colore output", type="string")
@@ -48,6 +53,7 @@ bz=np.genfromtxt(o.ipath+'/bz.txt', dtype=None, names=["z","bz"])
 dNdz=np.genfromtxt(o.ipath+'/Nz.txt', dtype=None, names=["z","dNdz"])
 fopath=None
 
+## import mpi only if we actually need it
 if o.use_mpi:
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
@@ -70,7 +76,18 @@ if (o.ztrue):
     out_extra+="+ztrue"
 if (o.Ngals>0):
     out_extra+="+subsamp_"+str(o.Ngals)
-
+if(o.Nstars>0 or o.Nstars==-1):
+    do_stars=True
+    out_extra+="+stars_"
+    if (o.Nstars>0):
+        out_extra+=str(o.Nstars)
+    else:
+        out_extra+="all"
+    stars = readStars(o.star_path)
+    print mranks, len(stars), "stars read."
+else:
+    do_stars=False
+    
 for i in range(o.Nstart,o.Nr):
     if (i%msize==mrank):
         print mranks, "Reading set ",i
@@ -91,17 +108,19 @@ for i in range(o.Nstart,o.Nr):
 
         # start catalog with known dNdz and bz
         N=len(gals)
-        if(o.Nstars>0 or o.Nstars==-1):
-            stars = readStars(o.star_path)
-            print mranks, len(stars), "stars read."
+        if do_stars:
             if(len(stars)==0):
                 print mranks, "No stars!"
                 stop()
             if(o.Nstars>0):
                 print "Subsampling to ",o.Nstars, " stars"
                 indices = np.random.randint(0,len(stars),o.Nstars)
-                stars=stars[indices]
-            N=N+len(stars)
+                N=N+len(stars[indices])
+                gals=np.append(gals,stars[indices])
+            else:
+                N=N+len(stars)
+                gals=np.append(gals,stars)
+                               
         meta={}
         for k,v in inif.items():
             meta['colore_'+k]=v
@@ -113,29 +132,16 @@ for i in range(o.Nstart,o.Nr):
             fields.append('z_true')
         cat=fc.Catalog(N, fields=fields,dNdz=dNdz, bz=bz,
                         meta=meta)
-        if(o.Nstars==0):
-            cat['ra']=gals['RA']
-            cat['dec']=gals['DEC']
-            if (o.realspace):
-                cat['z']=gals['Z_COSMO']
-            else:
-                cat['z']=gals['Z_COSMO']+gals['DZ_RSD']
-            if (o.ztrue):
+        cat['ra']=gals['RA']
+        cat['dec']=gals['DEC']
+        if (o.realspace):
+            cat['z']=gals['Z_COSMO']
+        else:
+            cat['z']=gals['Z_COSMO']+gals['DZ_RSD']
+        if (o.ztrue):
             # make a copy of z_true various PZ algos
             # will overwrite it
-                cat['z_true']=cat['z']
-        if(o.Nstars>0 or o.Nstars==-1):
-            cat['ra']=np.append(gals['RA'],stars['RA'])
-            cat['dec']=np.append(gals['DEC'],stars['DEC'])
-            if (o.realspace):
-                cat['z']=np.append(gals['Z_COSMO'],stars['Z_COSMO'])
-            else:
-                cat['z']=np.append(gals['Z_COSMO']+gals['DZ_RSD'],stars['Z_COSMO']+stars['DZ_RSD'])
-            if(o.ztrue):
-                cat['z_true']=cat['z']
-        else:
-            print "Invalid number of stars Nstars>=0 or Nstars=-1"
-            stop()
+            cat['z_true']=cat['z']
         ## first apply window function
         print mranks, "Creating window..."
         wfunc=fc.window.getWindowFunc(o)
@@ -145,7 +151,7 @@ for i in range(o.Nstart,o.Nr):
         pz=fc.photoz.getPhotoZ(o)
         print mranks, "Applying photoz..."
         cat.setPhotoZ(pz,apply_to_data=True)
-        ## now create full output path
+         ## now create full output path
         if fopath is None:
             dt=datetime.datetime.now()
             daystr="%02i%02i%02i"%(dt.year-2000,dt.month,dt.day)
