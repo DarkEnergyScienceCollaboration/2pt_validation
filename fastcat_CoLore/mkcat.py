@@ -127,6 +127,7 @@ for i in range(o.Nstart,o.Nr):
         meta['mkcat_git_version']=get_git_revision_short_hash()
         meta['timestamp']=str(datetime.datetime.now())
         meta['realspace']=o.realspace
+        meta['command_line']=' '.join(sys.argv)
         fields=['ra','dec','z']
         if (o.ztrue):
             fields.append('z_true')
