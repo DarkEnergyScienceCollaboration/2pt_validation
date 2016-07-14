@@ -8,7 +8,7 @@ import h5py
 def readColore(path):
     ## first read ini file
     idic={}
-    for line in open(path+"/params.ini").readlines():
+    for line in open(path+"/param.ini").readlines():
         i=line.find('#')
         if (i>0):
             line=line[:i]
