@@ -54,7 +54,8 @@ def readStars(path,zmean, zsigma):
     stars=np.array(data['data'])
     N=len(stars)
     ## and now need to convert to same type as galaxies
-    nstars=np.zeros(N,dtype=[('RA', '<f4'), ('DEC', '<f4'), ('Z_COSMO', '<f4'), ('DZ_RSD', '<f4')])
+    ## need to make this more robust
+    nstars=np.zeros(N,dtype=[('RA', '<f4'), ('DEC', '<f4'), ('Z_COSMO', '<f4'), ('DZ_RSD', '<f4'), ('TYPE', '<i4')])
     nstars['RA']=stars['RA']
     nstars['DEC']=stars['DEC']
     stars=nstars
