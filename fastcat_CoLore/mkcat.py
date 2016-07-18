@@ -15,8 +15,11 @@ else:
 #default in path
 ipath=root+"/colore_raw"
 #default out path
-opath=root+"/LNMocks"
+opath=root+"/LNMocks_staging"
 #default stellar path
+spath=root+"/Stars/star_table.h5"
+star_zmean=0.5
+star_zsigma=0.1
 
 parser = OptionParser()
 parser.add_option("--ipath", dest="ipath", default=ipath,
@@ -35,7 +38,11 @@ parser.add_option("--mpi", dest="use_mpi", default=False,
                   help="If used, use mpi4py for parallelization ",action="store_true")
 parser.add_option("--Nstars", dest="Nstars", type="int",default=0,
                   help="If Nstars>0, subsample to this number of stars. If Nstars=-1 use the full stellar catalog")
-parser.add_option("--sfile",dest='star_path',type="string", default=None,
+parser.add_option("--stars_zmean", dest="star_zmean", type="float",default=star_zmean,
+                  help="Mean 'redshift' for stars")
+parser.add_option("--stars_zsigma", dest="star_zsigma", type="float",default=star_zsigma,
+                  help="Sigma 'redshift' for stars")
+parser.add_option("--sfile",dest='star_path',type="string", default=spath,
                   help="Input stellar catalog")
 ## WF and PZ options
 fc.window.registerOptions(parser)
@@ -83,7 +90,7 @@ if(o.Nstars>0 or o.Nstars==-1):
         out_extra+=str(o.Nstars)
     else:
         out_extra+="all"
-    stars = readStars(o.star_path)
+    stars = readStars(o.star_path, o.star_zmean, o.star_zsigma)
     print mranks, len(stars), "stars read."
 else:
     do_stars=False
@@ -115,8 +122,12 @@ for i in range(o.Nstart,o.Nr):
             if(o.Nstars>0):
                 print "Subsampling to ",o.Nstars, " stars"
                 indices = np.random.randint(0,len(stars),o.Nstars)
-                N=N+len(stars[indices])
-                gals=np.append(gals,stars[indices])
+                cstars=stars[indices]
+                print cstars.dtype
+                print gals.dtype
+                N=N+len(cstars)
+                gals=np.append(gals,cstars)
+
             else:
                 N=N+len(stars)
                 gals=np.append(gals,stars)
