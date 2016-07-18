@@ -119,18 +119,21 @@ for i in range(o.Nstart,o.Nr):
             if(len(stars)==0):
                 print mranks, "No stars!"
                 stop()
-            if(o.Nstars>0):
-                print "Subsampling to ",o.Nstars, " stars"
-                indices = np.random.randint(0,len(stars),o.Nstars)
-                cstars=stars[indices]
+            try:    
+                if(o.Nstars>0):
+                    print "Subsampling to ",o.Nstars, " stars"
+                    indices = np.random.randint(0,len(stars),o.Nstars)
+                    cstars=stars[indices]
+                    N=N+len(cstars)
+                    gals=np.append(gals,cstars)
+                else:
+                    N=N+len(stars)
+                    gals=np.append(gals,stars)
+            except:
+                print "Couldn't add stars"
                 print cstars.dtype
                 print gals.dtype
-                N=N+len(cstars)
-                gals=np.append(gals,cstars)
-
-            else:
-                N=N+len(stars)
-                gals=np.append(gals,stars)
+                raise 
                                
         meta={}
         for k,v in inif.items():
