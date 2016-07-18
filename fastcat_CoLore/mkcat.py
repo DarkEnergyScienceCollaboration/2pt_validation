@@ -32,7 +32,7 @@ parser.add_option("--N", dest="Nr", default=10,
                   help="Number of realizations", type="int")
 parser.add_option("--Nstart", dest="Nstart", default=0,
                   help="starting realization", type="int")
-parser.add_option("--Ngals", dest="Ngals", default=0,
+parser.add_option("--Ngals", dest="Ngals", default=-1,
                   help="If non-zero, subsample to this number of gals", type="int")
 parser.add_option("--mpi", dest="use_mpi", default=False,
                   help="If used, use mpi4py for parallelization ",action="store_true")
@@ -81,7 +81,7 @@ if (o.realspace):
     out_extra+="+realspace"
 if (o.ztrue):
     out_extra+="+ztrue"
-if (o.Ngals>0):
+if (o.Ngals>=0):
     out_extra+="+subsamp_"+str(o.Ngals)
 if(o.Nstars>0 or o.Nstars==-1):
     do_stars=True
@@ -104,7 +104,7 @@ for i in range(o.Nstart,o.Nr):
             print mranks, "No galaxies!"
             stop()
         # subsample if required
-        if (o.Ngals>0):
+        if (o.Ngals>=0):
             print "Subsampling to ",o.Ngals
             # interestingly, this is superslow
             #indices=np.random.choice(xrange(len(gals)),o.Ngals, replace=False)
