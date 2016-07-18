@@ -53,7 +53,6 @@ def readStars(path,zmean, zsigma):
     data=h5py.File(path)
     stars=np.array(data['data'])
     N=len(stars)
-    print stars[:5]
     ## and now need to convert to same type as galaxies
     nstars=np.zeros(N,dtype=[('RA', '<f4'), ('DEC', '<f4'), ('Z_COSMO', '<f4'), ('DZ_RSD', '<f4')])
     nstars['RA']=stars['RA']
@@ -61,6 +60,4 @@ def readStars(path,zmean, zsigma):
     stars=nstars
     if (zmean>0):
         stars['Z_COSMO']=np.random.normal(zmean, zsigma, len(stars))
-    print stars[:5]
-
     return stars
