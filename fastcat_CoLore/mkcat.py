@@ -3,6 +3,7 @@ import sys
 from subs import *
 sys.path=["."]+sys.path
 import fastcat as fc
+from  fastcat.addStars import AddStars
 import numpy as np
 from optparse import OptionParser
 import datetime
@@ -16,10 +17,6 @@ else:
 ipath=root+"/colore_raw"
 #default out path
 opath=root+"/LNMocks_staging"
-#default stellar path
-spath=root+"/Stars/star_table.h5"
-star_zmean=0.5
-star_zsigma=0.1
 
 parser = OptionParser()
 parser.add_option("--ipath", dest="ipath", default=ipath,
@@ -34,20 +31,18 @@ parser.add_option("--Nstart", dest="Nstart", default=0,
                   help="starting realization", type="int")
 parser.add_option("--Ngals", dest="Ngals", default=-1,
                   help="If non-zero, subsample to this number of gals", type="int")
-parser.add_option("--mpi", dest="use_mpi", default=False,
-                  help="If used, use mpi4py for parallelization ",action="store_true")
 parser.add_option("--Nstars", dest="Nstars", type="int",default=0,
                   help="If Nstars>0, subsample to this number of stars. If Nstars=-1 use the full stellar catalog")
-parser.add_option("--stars_zmean", dest="star_zmean", type="float",default=star_zmean,
-                  help="Mean 'redshift' for stars")
-parser.add_option("--stars_zsigma", dest="star_zsigma", type="float",default=star_zsigma,
-                  help="Sigma 'redshift' for stars")
-parser.add_option("--sfile",dest='star_path',type="string", default=spath,
-                  help="Input stellar catalog")
+parser.add_option("--mpi", dest="use_mpi", default=False,
+                  help="If used, use mpi4py for parallelization ",action="store_true")
+
 ## WF and PZ options
 fc.window.registerOptions(parser)
 ## PZ options
 fc.photoz.registerOptions(parser)
+# Stars options
+AddStars.registerOptions(parser)
+
 ## other options
 parser.add_option("--realspace", dest="realspace", default=True,
                   help="Realspace instead of redshift space",action="store_true")
@@ -83,15 +78,10 @@ if (o.ztrue):
     out_extra+="+ztrue"
 if (o.Ngals>=0):
     out_extra+="+subsamp_"+str(o.Ngals)
-if(o.Nstars>0 or o.Nstars==-1):
+if(o.Nstars>0):
     do_stars=True
-    out_extra+="+stars_"
-    if (o.Nstars>0):
-        out_extra+=str(o.Nstars)
-    else:
-        out_extra+="all"
-    stars = readStars(o.star_path, o.star_zmean, o.star_zsigma)
-    print mranks, len(stars), "stars read."
+    out_extra+="+stars_"+str(o.Nstars)
+    stars = AddStars(options=o)
 else:
     do_stars=False
     
@@ -115,25 +105,6 @@ for i in range(o.Nstart,o.Nr):
 
         # start catalog with known dNdz and bz
         N=len(gals)
-        if do_stars:
-            if(len(stars)==0):
-                print mranks, "No stars!"
-                stop()
-            try:    
-                if(o.Nstars>0):
-                    print "Subsampling to ",o.Nstars, " stars"
-                    indices = np.random.randint(0,len(stars),o.Nstars)
-                    cstars=stars[indices]
-                    N=N+len(cstars)
-                    gals=np.append(gals,cstars)
-                else:
-                    N=N+len(stars)
-                    gals=np.append(gals,stars)
-            except:
-                print "Couldn't add stars"
-                print cstars.dtype
-                print gals.dtype
-                raise 
                                
         meta={}
         for k,v in inif.items():
@@ -153,9 +124,12 @@ for i in range(o.Nstart,o.Nr):
             cat['z']=gals['Z_COSMO']
         else:
             cat['z']=gals['Z_COSMO']+gals['DZ_RSD']
+        # add star is needed
+        if do_stars:
+            scat=stars.generateStarCatalog(o.Nstars)
+            cat.appendCatalog(scat)
+        # add true z if required (apply pz will loose this)
         if (o.ztrue):
-            # make a copy of z_true various PZ algos
-            # will overwrite it
             cat['z_true']=cat['z']
         ## first apply window function
         print mranks, "Creating window..."

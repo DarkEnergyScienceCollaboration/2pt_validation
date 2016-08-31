@@ -1,7 +1,6 @@
 
 import numpy as np
 import fastcat as fc
-
 import glob
 import h5py
 
@@ -48,17 +47,3 @@ def readColore(path):
 def get_git_revision_short_hash():
     import subprocess
     return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
-
-def readStars(path,zmean, zsigma):
-    data=h5py.File(path)
-    stars=np.array(data['data'])
-    N=len(stars)
-    ## and now need to convert to same type as galaxies
-    ## need to make this more robust
-    nstars=np.zeros(N,dtype=[('RA', '<f4'), ('DEC', '<f4'), ('Z_COSMO', '<f4'), ('DZ_RSD', '<f4'), ('TYPE', '<i4')])
-    nstars['RA']=stars['RA']
-    nstars['DEC']=stars['DEC']
-    stars=nstars
-    if (zmean>0):
-        stars['Z_COSMO']=np.random.normal(zmean, zsigma, len(stars))
-    return stars
