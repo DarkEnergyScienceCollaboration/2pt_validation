@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+#
+# This routine validates colore output directly.
+#
+
 import os
 from optparse import OptionParser
 from vc_sub import *
