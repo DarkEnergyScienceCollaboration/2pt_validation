@@ -1,0 +1,74 @@
+\documentclass[12pt]{article}
+
+\newcommand{\colore}{\texttt{CoLoRe}}
+\newcommand{\vx}{\textbf{x}}
+\newcommand{\vk}{\textbf{k}}
+
+\begin{document}
+\title{Power spectrum of log-normal transformed fields in
+  redshift-space}
+\author{A Slosar}
+\maketitle
+
+The log-normal transformation that \colore\ does is to 
+\begin{enumerate}
+\item Take the linear field in real space and smooth it
+  $P=P_L(k)e^{-k^2r^2}$
+\item Sample from the linear field
+\item Transform the liner field according to transformation
+  \begin{equation}
+    \rho_{\ln}(\vx) = \exp\left[b\delta(\vx)\right]
+  \end{equation}
+\item Move galaxies around based on linear velocities.
+\end{enumerate}
+
+The mean density of the transformed fied is given by
+\begin{equation}
+  \bar{\rho}_{\ln} = \int \frac{1}{\sqrt{2\pi\sigma^2}}e^{b\delta -
+    \frac{\delta^2}{2\sigma^2}} d \delta= \exp{\frac{\sigma^2b^2}{2}},
+\end{equation}
+where $\sigma^2$ is the field variance (that is why smoothing
+matters!) and the transformed overdensity is given by 
+\begin{equation}
+  \delta_{\ln} = \frac{\rho_{\ln}}{\bar{\rho}_{\ln}} -1 
+\end{equation}
+
+
+
+Based on this prescription, the transformed field in redshift-space
+is, on large scales
+\begin{equation}
+  \delta_{\ln,s}(\vk) = \delta_{\ln}(\vk) + \beta \delta (\vk) \mu^2,
+\end{equation}
+where $\beta=f/b$ is the usual Kaiser RSD distortion parameter. Note
+that the second $\delta$ multiplying Kaiser term is linear. This
+might seem a bit counter-intuitive, but can be shown to be using
+peak-background split argument. It also likely breaks down an smaller
+scales, but this is not crucial for us.
+
+We have that the auto power-spectrum is given by 
+\begin{equation}
+  P_s(\vk) = P_{\ln\ln}(\vk) + 2P_{\ln L}\beta (\vk)\mu^2 + \beta^2 P_{LL}(\vk)\mu^4
+\end{equation}
+
+Missing terms can be calculated via Fourier transform of the
+correlation functions.
+\begin{eqnarray}
+  \xi_{\ln L} (r) &=& \int d \delta_1 \int  d \delta_2 G(\delta_1, \delta_2|
+  \sigma^2, \xi(r)) \delta_{\ln}(\delta_1) \delta_2\\
+  \xi_{\ln \ln} (r) &=& \int d \delta_1 \int  d \delta_2 G(\delta_1, \delta_2|
+  \sigma^2, \xi(r)) \delta_{\ln}(\delta_1) \delta_{\ln}(\delta_2),
+\end{eqnarray}
+where Gaussian $G$ describes correlations between two points in the
+Gaussian field.
+Doing the math, one gets, see the maple script \texttt{lntrans.mw}:
+\begin{eqnarray}
+  \xi_{\ln L} (r) &=& b\xi(r)\\
+  \xi_{\ln \ln} (r) &=& e^{b^2 \xi(r)}-1
+\end{eqnarray}
+So, to make these predictions, one needs to logFFT to $\xi$, apply the
+above transforms and logFFT back. Interesting the $L \ln$ terms
+behaves exactly as if no transformation was done!
+
+
+\end{document}
