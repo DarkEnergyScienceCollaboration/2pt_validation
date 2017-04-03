@@ -26,4 +26,3 @@ The following spatial resolutions (in Mpc/h) are achievable with different combi
 |  4096        | 1.1   |  1.5  |  1.7  |  2.0  |
 |  6144        | 0.8   |  1.0  |  1.2  |  1.3  |
 |  8192        | 0.6   |  0.7  |  0.9  |  1.0  |
-| ------------ |:-----:|:-----:|:-----:|:-----:|
