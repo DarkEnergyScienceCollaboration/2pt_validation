@@ -10,6 +10,8 @@ nk=1024
 lkmin=-5.
 lkmax=2.
 
+h0=0.69 #Hubble rate
+
 #Parameters for N(z) \propto z^\alpha \exp[-(z/z0)^\beta]
 alpha_nz=2.
 beta_nz=1.0
@@ -17,10 +19,10 @@ z0_nz=0.3
 #Number density in arcmin^-2
 ndens_amin2=40.
 
-cosmo=ccl.Cosmology(Omega_c=0.266,Omega_b=0.049,h=0.69,sigma8=0.8,n_s=0.96)
+cosmo=ccl.Cosmology(Omega_c=0.266,Omega_b=0.049,h=h0,sigma8=0.8,n_s=0.96)
 karr=10.**(lkmin+(lkmax-lkmin)*np.arange(nk)/(nk-1.))
-pklinarr=ccl.linear_matter_power(cosmo,1.,karr)
-pknlinarr=ccl.nonlin_matter_power(cosmo,1.,karr)
+pklinarr=ccl.linear_matter_power(cosmo,1.,karr*h0)*h0**3
+pknlinarr=ccl.nonlin_matter_power(cosmo,1.,karr*h0)*h0**3
 
 zarr=zmax*np.arange(nz)/(nz-1.)
 gzarr=ccl.growth_factor(cosmo,1./(1+zarr))
