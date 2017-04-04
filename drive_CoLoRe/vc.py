@@ -16,7 +16,7 @@ parser.add_option("--cpath", dest="cpath", default=cpath,
                   help="Path to CoLoRe (will add /CoLoRe for executable)", type="string")
 parser.add_option("--outpath", dest="outpath", default=opath,
                   help="Path to output path", type="string")
-parser.add_option("--stype", dest="stype", default="nersc",
+parser.add_option("--stype", dest="stype", default="cori",
                   help="Submission type (exec,wq,nersc)", type="string")
 parser.add_option("--N", dest="Nr", default=10,
                   help="Number of realizations", type="int")
