@@ -2,7 +2,7 @@
 import os
 from optparse import OptionParser
 from vc_sub import *
-import numpy as np 
+import numpy as np
 
 parser = OptionParser()
 if (os.environ.has_key("COLORE_EXEC")):
@@ -34,11 +34,16 @@ parser.add_option("--zmin", dest="zmin", default=0.05,
                   help="zmin", type="float")
 parser.add_option("--zmax", dest="zmax", default=1.1,
                   help="zmax", type="float")
-
+parser.add_option("--nside", dest="nside", default=256,
+                  help="Resolution of kappa map (healpix nside)", type="int")
+parser.add_option("--zout", dest="z_out", default=0.5,
+                  help="Output redshift for kappa map",type="float")
+parser.add_option("--dens-type", dest="dens_type", default=2,
+                  help="Type of density field 0-Gaussian, 1-1LPT, 2-2LPT", type="int")
 (o, args) = parser.parse_args()
 
-#write distributions 
-writeDists(o) 
+#write distributions
+writeDists(o)
 # now loop over realizations
 for i in range(o.Nstart,o.Nr):
     execCoLoRe(i,o)

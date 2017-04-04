@@ -16,8 +16,8 @@ def writeDists(o):
     """ Writes bias and dn/dz files for
         redmagic like sample.
     Eli Rykoff says
-    
-    Density is ~constant comoving density 1.5e-3 h^3 Mpc^-3, sigma_z/(1+z) 
+
+    Density is ~constant comoving density 1.5e-3 h^3 Mpc^-3, sigma_z/(1+z)
     ~0.01, and bias is 2-2.5ish.
     """
 
@@ -27,7 +27,7 @@ def writeDists(o):
     rho_comoving=1.5e-3
     #Nz shaping
     zshape=1.0
-    
+
     d=o.outpath
     fn=open (d+"/Nz.txt",'w')
     fb=open (d+"/bz.txt",'w')
@@ -66,39 +66,62 @@ def execCoLoRe(i,o):
             cores=o.nodes*12, cpath=o.cpath, dr=dr)
         print exe
         os.system(exe)
-    elif o.stype=="nersc":
+    elif o.stype=="cori":
         open(dr+"/script.sm","w").write("""#!/bin/bash -l
 #SBATCH --partition regular
 #SBATCH --nodes {nodes}
 #SBATCH --time={time}
 #SBATCH --job-name=CoLoRe_{i}
+#SBATCH -C haswell
 #SBATCH --account=m1727
 cd {dr}
-srun -n {cores} {cpath}/CoLoRe ./params.ini >slurm.log 2>slurm.err
-""".format(nodes=o.nodes, cores=o.nodes*32, cpath=o.cpath, dr=dr,i=i,time=o.time))
+srun -n {cores} {cpath}/CoLoRe ./params.cfg >slurm.log 2>slurm.err
+""".format(nodes=o.nodes, cores=o.nodes*64, cpath=o.cpath, dr=dr,i=i,time=o.time))
         os.system("sbatch "+dr+"/script.sm")
     else:
         print "Unknown exe"
 
 def writeCInis(direct,i,o):
-    open (direct+"/params.ini",'w').write("""
-prefix_out= {direct}/out
-output_format= HDF5
-pk_filename= {cpath}/test_files/Pk_CAMB_test.dat
-nz_filename= {opath}/Nz.txt
-bias_filename= {opath}/bz.txt
-omega_M= 0.3
-omega_L= 0.7
-omega_B= 0.049
-h= 0.67
-w= -1.0
-ns= 0.96
-sigma_8= 0.8
-z_min= {zmin}
-z_max= {zmax}
-r_smooth= 1.
-n_grid= {ngrid}
-    seed= {seed}""".format(direct=direct,seed=o.seed+i,zmin=o.zmin, zmax=o.zmax,
-                           ngrid=o.Ngrid,cpath=o.cpath,opath=o.outpath))
+    open (direct+"/params.cfg",'w').write("""
+global:{
+  prefix_out= {direct}/out
+  output_format= HDF5
+  output_density= false
+  pk_filename= {cpath}/test_files/Pk_CAMB_test.dat
+  z_min= {zmin}
+  z_max= {zmax}
+  seed = {seed}
+  write_pred = true
+  pred_dz = 0.1
+}
+field_par:{
+  r_smooth= 1.
+  n_grid= {ngrid}
+  smooth_potential= true
+  dens_type = {dens_type}
+  lpt_buffer_fraction = 0.5
+  lpt_interp_type = 1
+  output_lpt = 0
+}
+cosmo_par:{
+  omega_M= 0.3
+  omega_L= 0.7
+  omega_B= 0.049
+  h= 0.67
+  w= -1.0
+  ns= 0.96
+  sigma_8= 0.8
+  }
+srcs1:{
+  nz_filename= {opath}/Nz.txt
+  bias_filename= {opath}/bz.txt
+  include_shear = true
+}
+kappa:{
+  z_out = {z_out}
+  nside = {nside}
+}
 
-            
+""".format(direct=direct,seed=o.seed+i,zmin=o.zmin, zmax=o.zmax,
+                           ngrid=o.Ngrid,cpath=o.cpath,opath=o.outpath,
+                           dens_type=o.dens_type,z_out=o.z_out,nside=o.nside))
