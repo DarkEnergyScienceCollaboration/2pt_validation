@@ -75,7 +75,7 @@ def execCoLoRe(i,o):
 #SBATCH -C haswell
 #SBATCH --account=m1727
 cd {dr}
-srun -n {cores} {cpath}/CoLoRe ./params.cfg >slurm.log 2>slurm.err
+srun -n {cores} -c 64 {cpath}/CoLoRe ./params.cfg >slurm.log 2>slurm.err
 """.format(nodes=o.nodes, cores=o.nodes*64, cpath=o.cpath, dr=dr,i=i,time=o.time))
         os.system("sbatch "+dr+"/script.sm")
     else:
