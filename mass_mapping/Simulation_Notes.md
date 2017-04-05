@@ -17,11 +17,25 @@ bias at `bz_lsst.txt`.
 
 We used a box with 4096^3 cells from redshift $z_{min}=0.05$ to $z_{max}=2.5$. This
 leads to a resolution of 1.96 Mpc/h. We generated 12 lens planes at $z=0.2, 0.4, 0.6,
-0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4$.  
+0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4$. These maps are stored as healpix maps
+with Nside=1024. 
 
 ## N(z)
 
+The redshift distribution was obtained using data from HSC-deep and making the depth
+cuts to match the wide field present in https://arxiv.org/pdf/1702.08449.pdf. After
+this we made a 5-th degree polynomial fit to the logarithm of the number of counts.
+The resulting N(z) and the fit can be seen in the figure below. The histogram was 
+genearted using `photoz_mc` from the HSC database. This is take from MC samples of
+the data. The total number density is 9.1 galaxies/arcmin$^2$. The resulting N(z)
+is in `nz_hsc.txt`. The columns of this file are z, n(z) with n(z) in units of 1/sq-deg.
 
+![Nz](images/Nz.png)
+
+## Bias
+
+We selected a bias inversely proportional to the growth following the expression
+b(z) = 0.95/D(z). This bias is in the file `bz_lsst.txt` and was produced by `mk_curves.py`.
 
 ## Catalogs
 
@@ -44,6 +58,17 @@ Where i is the index of the file (from 0 to 64).
 
 The simulation was run using 64 Cori Haswell nodes, with 64 threads each (32 cores/node 2
 threads). The total running time was 810.3 seconds.
+
+## Validation
+
+We performed a basic full-sky KS reconstruction of the kappa maps. In order to do so we used
+two different redshift bins (from 1.58 to 1.62 and from 1.5 to 1.7) and used the KS method
+to get the kappa maps. The results can be seen in the figure below. We used the script
+`test_sim.py`. 
+
+![Original kappa](images/kappa_orig.png)
+![Reconstructed kappa narrow](images/kappa_rec_1.58_1.62.png)
+![Reconstructed kappa wide](images/kappa_rec_1.55_1.6.png)
 
 ## License
 
