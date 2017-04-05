@@ -4,7 +4,7 @@
 #SBATCH --nodes 64
 #SBATCH --time=00:30:00
 #SBATCH --job-name=CoLoRe_WL
-#SBATCH --account=des
+#SBATCH --account=m1727
 #SBATCH -C haswell
 #module load gsl
 #module load fftw
