@@ -15,7 +15,8 @@ The total memory scales with Nside^3
 
 ## Run time tests
 Javi has run a 2LPT Nside=4096 sim in ~30min using 32 nodes and 8 cores per node on Cori.
-
+Also tried to run 2LPT Nside=6144 on 256 KNL nodes in Cori (now only available in the debug queue).
+Each node has 272 threads but it ran out of time (30 minutes).
 
 ## Resolution
 The following spatial resolutions (in Mpc/h) are achievable with different combinations of Nside and zmax:
