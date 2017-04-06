@@ -4,7 +4,7 @@ import fastcat as fc
 import glob
 import h5py
 
-def readColore(params_path):
+def readColore(params_path,use_mpi=True):
     ## first read ini file
     idic={}
     for line in lines:
@@ -29,10 +29,24 @@ def readColore(params_path):
     path_out = idic['prefix_out']
     flist=glob.glob(path_out+'_srcs_*.h5")
     data=[]
+    if use_mpi:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        mrank = comm.Get_rank()
+        mranks = "["+str(mrank)+"]:"
+        msize = comm.Get_size()
+        if (mrank==0):
+            print "MPI Size:", msize
+    else:
+        mrank=0
+        msize=1
+        mranks = ""
     for fname in flist:
-        print "     ... reading : ",fname, "\r",
-        da=h5py.File(fname)
-        data.append(da['sources'].value)
+        if (i%msize==mrank):
+            print mranks, "Reading set ",i
+            print "     ... reading : ",fname, "\r",
+            da=h5py.File(fname)
+            data.append(da['sources'].value)
     data=np.concatenate(data,axis=0)
     print "Read"
     return data,idic
