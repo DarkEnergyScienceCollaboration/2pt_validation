@@ -19,10 +19,10 @@ ipath=root+"/colore_raw"
 opath=root+"/LNMocks_staging"
 
 parser = OptionParser()
-parser.add_option("--ipath", dest="ipath", default=ipath,
-                  help="Path to colore input", type="string")
+parser.add_option("--params_file", dest="ipath", default=ipath,
+                  help="Path to CoLoRe params file", type="string")
 parser.add_option("--opath", dest="opath", default=opath,
-                  help="Path to colore output", type="string")
+                  help="Path to output", type="string")
 parser.add_option("--oextra", dest="oextra", default="",
                   help="Extra string to be put in output path", type="string")
 parser.add_option("--N", dest="Nr", default=10,
@@ -51,8 +51,6 @@ parser.add_option("--ztrue", dest="ztrue", default=False,
 
 (o, args) = parser.parse_args()
 
-bz=np.genfromtxt(o.ipath+'/bz.txt', dtype=None, names=["z","bz"])
-dNdz=np.genfromtxt(o.ipath+'/Nz.txt', dtype=None, names=["z","dNdz"])
 fopath=None
 
 ## import mpi only if we actually need it
@@ -88,7 +86,11 @@ else:
 for i in range(o.Nstart,o.Nr):
     if (i%msize==mrank):
         print mranks, "Reading set ",i
-        gals,inif=readColore(o.ipath+"/Set%i"%i)
+        gals,inif=readColore(o.ipath)
+        nzfile=inif['nz_filename']
+        bzfile=inif['bias_filename']
+        bz=np.genfromtxt(bzfile, dtype=None, names=["z","bz"])
+        dNdz=np.genfromtxt(nzfile, dtype=None, names=["z","dNdz"])
         print mranks, len(gals)," galaxies read."
         if (len(gals)==0):
             print mranks, "No galaxies!"

@@ -4,17 +4,9 @@ import fastcat as fc
 import glob
 import h5py
 
-def readColore(path):
+def readColore(params_path):
     ## first read ini file
     idic={}
-    try:
-        lines=open(path+"/params.cfg")
-    except IOError:
-        try:
-            lines=open(path+"/params.cfg")
-        except IOError:
-            print "Could not find eiter param.cfg or params.cfg, giving up."
-            raise IOError
     for line in lines:
         i=line.find('#')
         if (i>0):
@@ -34,7 +26,8 @@ def readColore(path):
                     pass
             idic[x]=y
     data=[]
-    flist=glob.glob(path+"/out_*.h5")
+    path_out = idic['prefix_out']
+    flist=glob.glob(path_out+'_srcs_*.h5")
     data=[]
     for fname in flist:
         print "     ... reading : ",fname, "\r",
