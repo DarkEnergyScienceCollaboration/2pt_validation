@@ -20,7 +20,7 @@ opath=root+"/LNMocks_staging"
 
 parser = OptionParser()
 parser.add_option("--ipath", dest="ipath", default=ipath,
-                  help="Path to colore output", type="string")
+                  help="Path to colore input", type="string")
 parser.add_option("--opath", dest="opath", default=opath,
                   help="Path to colore output", type="string")
 parser.add_option("--oextra", dest="oextra", default="",
@@ -84,7 +84,7 @@ if(o.Nstars>0):
     stars = AddStars(options=o)
 else:
     do_stars=False
-    
+
 for i in range(o.Nstart,o.Nr):
     if (i%msize==mrank):
         print mranks, "Reading set ",i
@@ -105,7 +105,7 @@ for i in range(o.Nstart,o.Nr):
 
         # start catalog with known dNdz and bz
         N=len(gals)
-                               
+
         meta={}
         for k,v in inif.items():
             meta['colore_'+k]=v

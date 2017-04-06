@@ -8,12 +8,12 @@ def readColore(path):
     ## first read ini file
     idic={}
     try:
-        lines=open(path+"/param.ini")
+        lines=open(path+"/params.cfg")
     except IOError:
         try:
-            lines=open(path+"/params.ini")
+            lines=open(path+"/params.cfg")
         except IOError:
-            print "Could not find eiter param.ini or params.ini, giving up."
+            print "Could not find eiter param.cfg or params.cfg, giving up."
             raise IOError
     for line in lines:
         i=line.find('#')

@@ -58,7 +58,7 @@ def execCoLoRe(i,o):
         pass
     writeCInis (dr,i,o)
     if o.stype=="exec":
-        exe=o.cpath+"/CoLoRe "+dr+"/params.ini"
+        exe=o.cpath+"/CoLoRe "+dr+"/params.cfg"
         print exe
         os.system (exe)
     elif o.stype=="bnl":
