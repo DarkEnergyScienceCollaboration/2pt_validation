@@ -1,11 +1,19 @@
-
+import os
 import numpy as np
 import fastcat as fc
 import glob
 import h5py
 
 def readColore(params_path):
-    ## first read ini file
+    ## first read param file
+    try:
+        lines=open(params_path)
+    except IOError:
+        try:
+            lines=open(params_path)
+        except IOError:
+            print "Could not find parameter file, giving up."
+            raise IOError
     idic={}
     for line in lines:
         i=line.find('#')
@@ -19,6 +27,11 @@ def readColore(params_path):
                     y=float(y)
                 except:
                     pass
+            if (type(y)==str):
+                try:
+                   y=y.split('"')[1] 
+                except:
+                   pass
             else:
                 try:
                     y=int(y)
@@ -26,13 +39,16 @@ def readColore(params_path):
                     pass
             idic[x]=y
     data=[]
-    path_out = idic['prefix_out']
-    flist=glob.glob(path_out+'_srcs_*.h5")
+    path_out = idic['prefix_out']  
+    path_out = path_out+"_srcs_*.h5"
+    flist=glob.glob(path_out) 
     data=[]
     for fname in flist:
         print "     ... reading : ",fname, "\r",
         da=h5py.File(fname)
-        data.append(da['sources'].value)
+        #I assume just one population
+        print len(da['sources0'].value) , ' sources found'
+        data.append(da['sources0'].value)
     data=np.concatenate(data,axis=0)
     print "Read"
     return data,idic

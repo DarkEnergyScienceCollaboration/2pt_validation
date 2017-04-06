@@ -87,6 +87,7 @@ for i in range(o.Nstart,o.Nr):
     if (i%msize==mrank):
         print mranks, "Reading set ",i
         gals,inif=readColore(o.ipath)
+        #I assume one population only!!!
         nzfile=inif['nz_filename']
         bzfile=inif['bias_filename']
         bz=np.genfromtxt(bzfile, dtype=None, names=["z","bz"])
