@@ -4,7 +4,6 @@ import fastcat as fc
 import glob
 import h5py
 
-
 def readColore(params_path,use_mpi=True):
     ## first read ini file
     try:
@@ -56,15 +55,18 @@ def readColore(params_path,use_mpi=True):
         mrank=0
         msize=1
         mranks = ""
-    for fname in flist:
+    #Loop over simulation chunks
+    for i,fname in enumerate(flist):
         if (i%msize==mrank):
             print mranks, "Reading set ",i
             print "     ... reading : ",fname, "\r",
             da=h5py.File(fname)
-            data.append(da['sources'].value)
+            data.append(da['sources0'].value)
             print len(da['sources0'].value) , ' sources found'
     data=np.concatenate(data,axis=0)
     print "Read"
+    if use_mpi:
+        comm.Barrier()
     return data,idic
 
 def get_git_revision_short_hash():
