@@ -38,11 +38,11 @@ def readColore(params_path,use_mpi=True):
                 except:
                     pass
             idic[x]=y
-    data=[]
+    newdata=[]
     path_out = idic['prefix_out']
     path_out = path_out+"_srcs_*.h5"
     flist=glob.glob(path_out)
-    data=[]
+    
     if use_mpi:
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
@@ -59,15 +59,21 @@ def readColore(params_path,use_mpi=True):
     for i,fname in enumerate(flist):
         if (i%msize==mrank):
             print mranks, "Reading set ",i
-            print "     ... reading : ",fname, "\r",
             da=h5py.File(fname)
-            data.append(da['sources0'].value)
-            print len(da['sources0'].value) , ' sources found'
-    data=np.concatenate(data,axis=0)
-    print "Read"
+            data = da['sources0'].value
+            print "     ... reading : ",fname, ' with ', len(data), 'sources'
+            newdata.append(data)           
     if use_mpi:
-        comm.Barrier()
-    return data,idic
+        newdata = comm.gather(sendobj=data, root = 0) 
+        data=np.concatenate(newdata,axis=0)
+        print "Read", len(data), 'elements'
+        comm.Disconnect()
+        return data,idic 
+
+    else:
+        data=np.concatenate(newdata,axis=0)
+        print "Read", len(data), 'elements'
+        return data,idic
 
 def get_git_revision_short_hash():
     import subprocess
