@@ -64,80 +64,95 @@ if(o.Nstars>0):
 else:
     do_stars=False
 time0 = datetime.datetime.now()
+
+if o.use_mpi:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    mrank = comm.Get_rank()
+    mranks = "["+str(mrank)+"]:"
+    msize = comm.Get_size()
+    if (mrank==0):
+        print "MPI Size:", msize
+else:
+    mrank=0
+    msize=1
+    mranks = ""
+
+
 for i,param_file in enumerate(o.ipath):
     gals,inif=readColore(param_file,use_mpi=o.use_mpi)
     time1 = datetime.datetime.now()
-    print 'CoLoRe realization read. Elapsed time: ',(time1-time0).total_seconds(), ' seconds'
-    dirname, _ = os.path.split(param_file)
-    nzfile=inif['nz_filename']
-    nzfile = os.path.join(dirname,nzfile)  
-    bzfile=inif['bias_filename']
-    bzfile = os.path.join(dirname,bzfile)
-    bzfile = os.path.join(dirname,bzfile)
-    bz=np.genfromtxt(bzfile, dtype=None, names=["z","bz"])
-    dNdz=np.genfromtxt(nzfile, dtype=None, names=["z","dNdz"])
-    len(gals)," galaxies read."
-    if (len(gals)==0):
-        print "No galaxies!"
-        stop()
-    # subsample if required
-    if (o.Ngals>=0):
-        print "Subsampling to ",o.Ngals
-        # interestingly, this is superslow
-        #indices=np.random.choice(xrange(len(gals)),o.Ngals, replace=False)
-        # this risks repetition, but OK
-        indices=np.random.randint(0,len(gals),o.Ngals)
-        gals=gals[indices]
-        print "Done"
+    if mrank==0:
+        print 'CoLoRe realization read. Elapsed time: ',(time1-time0).total_seconds(), ' seconds'
+        dirname, _ = os.path.split(param_file)
+        nzfile=inif['nz_filename']
+        nzfile = os.path.join(dirname,nzfile)  
+        bzfile=inif['bias_filename']
+        bzfile = os.path.join(dirname,bzfile) 
+        bz=np.genfromtxt(bzfile, dtype=None, names=["z","bz"])
+        dNdz=np.genfromtxt(nzfile, dtype=None, names=["z","dNdz"])
+        len(gals)," galaxies read."
+        if (len(gals)==0):
+            print "No galaxies!"
+            stop()
+        # subsample if required
+        if (o.Ngals>=0):
+             print "Subsampling to ",o.Ngals
+             # interestingly, this is superslow
+             #indices=np.random.choice(xrange(len(gals)),o.Ngals, replace=False)
+             # this risks repetition, but OK
+             indices=np.random.randint(0,len(gals),o.Ngals)
+             gals=gals[indices]
+             print "Done"
 
-    # start catalog with known dNdz and bz
-    N=len(gals)
-    meta={}
-    for k,v in inif.items():
-        meta['colore_'+k]=v
-    meta['mkcat_git_version']=get_git_revision_short_hash()
-    meta['timestamp']=str(datetime.datetime.now())
-    meta['realspace']=o.realspace
-    meta['command_line']=' '.join(sys.argv)
-    fields=['ra','dec','z']
-    if (o.ztrue):
-        fields.append('z_true')
-    cat=fc.Catalog(N, fields=fields,dNdz=dNdz, bz=bz,
-                    meta=meta)
-    cat['ra']=gals['RA']
-    cat['dec']=gals['DEC']
-    if (o.realspace):
-        cat['z']=gals['Z_COSMO']
-    else:
-        cat['z']=gals['Z_COSMO']+gals['DZ_RSD']
-    # add star is needed
-    if do_stars:
-        scat=stars.generateStarCatalog(o.Nstars)
-        cat.appendCatalog(scat)
-    # add true z if required (apply pz will loose this)
-    if (o.ztrue):
-        cat['z_true']=cat['z']
-    ## first apply window function
-    print "Creating window..."
-    wfunc=fc.window.getWindowFunc(o)
-    print "Applying window..."
-    cat.setWindow(wfunc, apply_to_data=True)
-    ## next apply photoz
-    pz=fc.photoz.getPhotoZ(o)
-    print "Applying photoz..."
-    cat.setPhotoZ(pz,apply_to_data=True)
-    ## now create full output path
-    if fopath is None:
-        dt=datetime.datetime.now()
-        daystr="%02i%02i%02i"%(dt.year-2000,dt.month,dt.day)
-        fopath=o.opath+"/"+daystr+"+"+cat.photoz.NameString()+"+"+cat.window.NameString()+out_extra
-        if not os.path.exists(fopath):
-            os.makedirs(fopath)
-    ## write the actual catalog
-    fname=fopath+'/fastcat_catalog%i.h5'%(i)
-    print "Writing "+fname+" ..."
-    cat.writeH5(fname)
-time_fin = datetime.datetime.now()
-print 'Done'
-print 'Total elapsed time: ',(time_fin-time0).total_seconds(),' seconds'
+        # start catalog with known dNdz and bz
+        N=len(gals)
+        meta={}
+        for k,v in inif.items():
+            meta['colore_'+k]=v
+        meta['mkcat_git_version']=get_git_revision_short_hash()
+        meta['timestamp']=str(datetime.datetime.now())
+        meta['realspace']=o.realspace
+        meta['command_line']=' '.join(sys.argv)
+        fields=['ra','dec','z']
+        if (o.ztrue):
+            fields.append('z_true')
+        cat=fc.Catalog(N, fields=fields,dNdz=dNdz, bz=bz,
+                        meta=meta)
+        cat['ra']=gals['RA']
+        cat['dec']=gals['DEC']
+        if (o.realspace):
+            cat['z']=gals['Z_COSMO']
+        else:
+            cat['z']=gals['Z_COSMO']+gals['DZ_RSD']
+        # add star is needed
+        if do_stars:
+            scat=stars.generateStarCatalog(o.Nstars)
+            cat.appendCatalog(scat)
+        # add true z if required (apply pz will loose this)
+        if (o.ztrue):
+            cat['z_true']=cat['z']
+        ## first apply window function
+        print "Creating window..."
+        wfunc=fc.window.getWindowFunc(o)
+        print "Applying window..."
+        cat.setWindow(wfunc, apply_to_data=True)
+        ## next apply photoz
+        pz=fc.photoz.getPhotoZ(o)
+        print "Applying photoz..."
+        cat.setPhotoZ(pz,apply_to_data=True)
+        ## now create full output path
+        if fopath is None:
+            dt=datetime.datetime.now()
+            daystr="%02i%02i%02i"%(dt.year-2000,dt.month,dt.day)
+            fopath=o.opath+"/"+daystr+"+"+cat.photoz.NameString()+"+"+cat.window.NameString()+out_extra
+            if not os.path.exists(fopath):
+                os.makedirs(fopath)
+        ## write the actual catalog
+        fname=fopath+'/fastcat_catalog%i.h5'%(i)
+        print "Writing "+fname+" ..."
+        cat.writeH5(fname)
+    time_fin = datetime.datetime.now()
+    print 'Done'
+    print 'Total elapsed time: ',(time_fin-time0).total_seconds(),' seconds'
 

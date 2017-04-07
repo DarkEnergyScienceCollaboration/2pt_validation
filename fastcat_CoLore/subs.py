@@ -63,12 +63,13 @@ def readColore(params_path,use_mpi=True):
             data = da['sources0'].value
             print "     ... reading : ",fname, ' with ', len(data), 'sources'
             newdata.append(data)           
-    if use_mpi:
-        newdata = comm.gather(sendobj=data, root = 0) 
-        data=np.concatenate(newdata,axis=0)
-        print "Read", len(data), 'elements'
-        comm.Disconnect()
-        return data,idic 
+    if use_mpi: 
+        if mrank==0:
+            newdata = comm.gather(sendobj=data, root = 0) 
+            data=np.concatenate(newdata,axis=0)
+            print "Read", len(data), 'elements'
+            comm.Disconnect()
+            return data,idic 
 
     else:
         data=np.concatenate(newdata,axis=0)
