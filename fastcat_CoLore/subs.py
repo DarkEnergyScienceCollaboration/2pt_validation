@@ -203,26 +203,29 @@ def process(o):
                 print "Applying photoz..."
                 cataux.setPhotoZ(pz,apply_to_data=True) 
                 cat.appendCatalog(cataux)
-                if len(cat.data)>0 & o.use_mpi:
-                    sizes.append(comm.bcast(len(cat.data),root=mrank))
+                if o.use_mpi:
+                    sizes.append(len(cat.data))
+                    comm.bcast(sizes,root=mrank)
                 t1 = datetime.datetime.now()
                 print "Colore realization read. Elapsed time: ", (t1-time0).total_seconds()
          
-        if o.use_mpi:    
+        if o.use_mpi:
+            #sizes = comm.gather(sizes,root=0)
+            #comm.bcast(sizes,root=0)    
             comm.barrier()
-            if mrank==0: 
-                print 'Writing... %d galaxies' % len(cat.data)
-                print 'test sizes: ', sizes
-                print 'len sizes: ', len(sizes) 
+            sizes = np.array(sizes)
+            sizes = np.unique(sizes) 
+            print 'Writing... %d galaxies' % len(cat.data)
+            print 'test sizes: ', sizes
+            print 'len sizes: ', len(sizes) 
             with h5py.File(fname, "w",driver='mpio', comm=comm) as of:
                 dset=of.create_dataset("objects", (len(cat.data),), cat.data.dtype)
                 of.atomic=True
-                comm.barrier()
+                comm.barrier()    
                 print 'Test sizes',sizes[0],sizes[-1]
                 for i in range(len(sizes)-1):
-                    if i%msize==mrank:
-                        print 'sizes: ',sizes[i], sizes[i+1], i, mrank
-                        #with dset.collective:
+                    print 'sizes: ',sizes[i], sizes[i+1], i, mrank
+                    with dset.collective:
                         dset[sizes[i]:sizes[i+1]]=cat.data[sizes[i]:sizes[i+1]]
             comm.barrier()
         if mrank==0:
