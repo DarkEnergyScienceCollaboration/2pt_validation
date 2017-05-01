@@ -211,22 +211,32 @@ def process(o):
          
         if o.use_mpi:
             #sizes = comm.gather(sizes,root=0)
-            #comm.bcast(sizes,root=0)    
+            #comm.bcast(sizes,root=0)
+            comm.barrier()    
+            total_size = 0
+            offset =[0]
+            icount=0
+            while icount<msize:
+                if icount==mrank:
+                    total_size=total_size+sizes[-1]
+                    offset.append(total_size)
+                    icount=icount+1
+                    comm.bcast(icount,root=mrank)
             comm.barrier()
             sizes = np.array(sizes)
             sizes = np.unique(sizes) 
-            print 'Writing... %d galaxies' % len(cat.data)
+            print 'Writing... %d galaxies' % total_size
             print 'test sizes: ', sizes
             print 'len sizes: ', len(sizes) 
             with h5py.File(fname, "w",driver='mpio', comm=comm) as of:
-                dset=of.create_dataset("objects", (len(cat.data),), cat.data.dtype)
+                dset=of.create_dataset("objects", (total_size,), cat.data.dtype)
                 of.atomic=True
                 comm.barrier()    
                 print 'Test sizes',sizes[0],sizes[-1]
                 for i in range(len(sizes)-1):
                     print 'sizes: ',sizes[i], sizes[i+1], i, mrank
                     with dset.collective:
-                        dset[sizes[i]:sizes[i+1]]=cat.data[sizes[i]:sizes[i+1]]
+                        dset[sizes[i]+offset[mrank-1]:sizes[i+1]+offset[mrank-1]]=cat.data[sizes[i]:sizes[i+1]]
             comm.barrier()
         if mrank==0:
             if (len(cat.data)==0):
