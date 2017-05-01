@@ -175,8 +175,9 @@ def process(o):
             dt=datetime.datetime.now()
             daystr="%02i%02i%02i"%(dt.year-2000,dt.month,dt.day)
             fopath=o.opath+"/"+daystr+"+"+pz.NameString()+"+"+wfunc.NameString()+out_extra
-            if not os.path.exists(fopath):
-                os.makedirs(fopath)
+            if (mrank==0):
+                if not os.path.exists(fopath):
+                    os.makedirs(fopath)
        
         fname=fopath+'/fastcat_catalog%i.h5'%(i)
         print "Going to write "+fname+" ..."
