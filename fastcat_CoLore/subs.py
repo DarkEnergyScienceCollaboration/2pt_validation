@@ -46,7 +46,7 @@ def readColore(params_path):
     idic=readColoreIni(params_path)
     path_out = idic['prefix_out']
     path_out = path_out+"_srcs_*.h5"
-    flist=glob.glob(path_out)
+    flist=sorted(glob.glob(path_out))
     return flist,idic
 
 def get_git_revision_short_hash():
@@ -70,8 +70,8 @@ def setupOptions():
                       help="Path to output", type="string")
     parser.add_option("--oextra", dest="oextra", default="",
                       help="Extra string to be put in output path", type="string")
-    parser.add_option("--Ngals", dest="Ngals", default=-1,
-                      help="If non-zero, subsample to this number of gals", type="int")
+    parser.add_option("--ss_frac", dest="ss_frac", default=-1,
+                      help="If non-zero, subsample to this fraction of gals", type="float")
     parser.add_option("--Nstars", dest="Nstars", type="int",default=0,
                       help="If Nstars>0, subsample to this number of stars. If Nstars=-1 use the full stellar catalog")
     parser.add_option("--mpi", dest="use_mpi", default=False,
@@ -103,8 +103,8 @@ def getExtraString(o):
         out_extra+="+realspace"
     if (o.ztrue):
         out_extra+="+ztrue"
-    if (o.Ngals>=0):
-        out_extra+="+subsamp_"+str(o.Ngals)
+    if (o.ss_frac>=0):
+        out_extra+="+subsamp_"+str(o.ss_frac)
     if(o.Nstars>0):
         out_extra+="+stars_"+str(o.Nstars)
     return out_extra
@@ -181,14 +181,21 @@ def process(o):
        
         fname=fopath+'/fastcat_catalog%i.h5'%(i)
         print "Going to write "+fname+" ..."
-        if o.use_mpi:
-            sizes=[0]
         for i,filename in enumerate(flist):
             if i%msize==mrank:
                 print mranks, "Reading set ",i
                 da=h5py.File(filename)
                 data = da['sources0'].value 
                 print "     ... reading : ",filename, ' with ', len(data), 'sources'
+                if (o.ss_frac>=0):
+                     print "Subsampling to ",o.ss_frac
+                     # interestingly, this is superslow
+                     #indices=np.random.choice(xrange(len(gals)),o.Ngals, replace=False)
+                     # this risks repetition, but OK
+                     indices=np.random.randint(0,len(data),int(len(data)*o.ss_frac))
+                     data=data[indices]
+                     print "Done"
+
                 cataux = fc.Catalog(len(data), fields=fields, dNdz=dNdz, bz=bz, meta=meta)
                 cataux['ra']=data['RA']
                 cataux['dec']=data['DEC']
@@ -204,68 +211,17 @@ def process(o):
                 print "Applying photoz..."
                 cataux.setPhotoZ(pz,apply_to_data=True) 
                 cat.appendCatalog(cataux)
-                if o.use_mpi:
-                    sizes.append(len(cat.data))
-                    comm.bcast(sizes,root=mrank)
                 t1 = datetime.datetime.now()
                 print "Colore realization read. Elapsed time: ", (t1-time0).total_seconds()
          
-        if o.use_mpi:
-            #sizes = comm.gather(sizes,root=0)
-            #comm.bcast(sizes,root=0)
-            comm.barrier()    
-            total_size = 0
-            offset =[0]
-            icount=0
-            while icount<msize:
-                if icount==mrank:
-                    total_size=total_size+sizes[-1]
-                    offset.append(total_size)
-                    icount=icount+1
-                    comm.bcast(icount,root=mrank)
-            comm.barrier()
-            sizes = np.array(sizes)
-            sizes = np.unique(sizes) 
-            print 'Writing... %d galaxies' % total_size
-            print 'test sizes: ', sizes
-            print 'len sizes: ', len(sizes) 
-            with h5py.File(fname, "w",driver='mpio', comm=comm) as of:
-                dset=of.create_dataset("objects", (total_size,), cat.data.dtype)
-                of.atomic=True
-                comm.barrier()    
-                print 'Test sizes',sizes[0],sizes[-1]
-                for i in range(len(sizes)-1):
-                    print 'sizes: ',sizes[i], sizes[i+1], i, mrank
-                    with dset.collective:
-                        dset[sizes[i]+offset[mrank-1]:sizes[i+1]+offset[mrank-1]]=cat.data[sizes[i]:sizes[i+1]]
-            comm.barrier()
-        if mrank==0:
-            if (len(cat.data)==0):
-                print "No galaxies!"
-                #stop()
-            # subsample if required
-            if (o.Ngals>=0):
-                 print "Subsampling to ",o.Ngals
-                 # interestingly, this is superslow
-                 #indices=np.random.choice(xrange(len(gals)),o.Ngals, replace=False)
-                 # this risks repetition, but OK
-                 indices=np.random.randint(0,len(cat.data),o.Ngals)
-                 cat.data=cat.data[indices]
-                 print "Done"
+        ## now we need to tell global catalog about PZs and WF
         cat.setPhotoZ(pz, apply_to_data=False)
         cat.setWindow(wfunc, apply_to_data=False)
-        if not o.use_mpi: 
-            cat.writeH5(fname, comm)
-        else:
-            if type(cat.dNdz)!=type(None):
-                dset=of.create_dataset("dNdz", data=cat.dNdz)
-            if type(cat.bz)!=type(None):
-                dset=of.create_dataset("bz", data=cat.bz)
-            cat.window.writeH5(of)
-            pz=of.create_dataset("photoz",data=[])
-            cat.photoz.writeH5(pz)
-            comm.barrier()
-            of.close()
+        ## write out
+        ## Note at this point: each node has it own chunk of data as catalog
+        ## but writeH5 knows how to handle that.
+        cat.writeH5(fname, comm)
+
         time_fin = datetime.datetime.now()
         print 'Done'
         print 'Total elapsed time: ',(time_fin-time0).total_seconds(),' seconds'
