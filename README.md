@@ -42,6 +42,7 @@ There are three basic directories:
 * drive_CoLoRe : helps submit CoLoRe jobs
 * validate_CoLoRe : a very simply script for CoLoRe validation, a 0th order test so that we don't issue people junk
 * fastcat_CoLoRe : produce fastcat catalogs from CoLoRe outputs. Cuts the data, adds PZ errors, etc.
+* namaster_fastcat : compute tomographic power spectra from fastcat catalog
 
 # NERSC resources
 
