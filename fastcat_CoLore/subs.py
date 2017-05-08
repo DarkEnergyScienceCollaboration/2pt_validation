@@ -157,20 +157,14 @@ def process(o):
         meta['timestamp']=str(datetime.datetime.now())
         meta['realspace']=o.realspace
         meta['command_line']=' '.join(sys.argv)
-        fields=['ra','dec','z']
         if (o.ztrue):
             fields.append('z_true')
         ## create an empty catalog
-        cat = fc.Catalog(0, fields=fields, dNdz=dNdz, bz=bz, meta=meta) 
+        cat = None
         ## create window 
         wfunc=fc.window.getWindowFunc(o)
         ## next create photoz
         pz=fc.photoz.getPhotoZ(o)
-        #To add the stars just once
-        if do_stars & (isc is None):
-            scat=stars.generateStarCatalog(o.Nstars)
-            cat.appendCatalog(scat)
-            isc = 0
         if fopath is None:
             dt=datetime.datetime.now()
             daystr="%02i%02i%02i"%(dt.year-2000,dt.month,dt.day)
@@ -196,7 +190,7 @@ def process(o):
                      data=data[indices]
                      print "Done"
 
-                cataux = fc.Catalog(len(data), fields=fields, dNdz=dNdz, bz=bz, meta=meta)
+                cataux = fc.Catalog(len(data), dNdz=dNdz, bz=bz, meta=meta)
                 cataux['ra']=data['RA']
                 cataux['dec']=data['DEC']
                 if (o.realspace):
@@ -210,9 +204,17 @@ def process(o):
                 cataux.setWindow(wfunc, apply_to_data=True)
                 print "Applying photoz..."
                 cataux.setPhotoZ(pz,apply_to_data=True) 
-                cat.appendCatalog(cataux)
+                if cat is None:
+                    cat=cataux
+                else:
+                    cat.appendCatalog(cataux)
                 t1 = datetime.datetime.now()
                 print "Colore realization read. Elapsed time: ", (t1-time0).total_seconds()
+        #To add the stars just once
+        if do_stars & (isc is None):
+            scat=stars.generateStarCatalog(o.Nstars/msize)
+            cat.appendCatalog(scat)
+            isc = 0
          
         ## now we need to tell global catalog about PZs and WF
         cat.setPhotoZ(pz, apply_to_data=False)
