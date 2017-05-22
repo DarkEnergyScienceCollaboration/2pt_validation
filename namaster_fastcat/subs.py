@@ -77,23 +77,21 @@ class Tracer(object) :
     """
 
     #TODO: maybe we want to do something more general than top-hat binning in z
-    def __init__(self,cat,z0,zf,lmax,mask,n_sampling=256,dz_sampling=-1,templates=None) :
+    def __init__(self,map_n,zarr,nzarr,lmax,mask,templates=None) :
         """Initialize tracer (get sample, compute N(z) and sky map
         
         Parameters
         ----------
-        cat : fc.Catalog
-            Catalog with object properties
-        z0,zf : float
-            Edges of the redshift bin defining the sample
+        map_n : np.ndarray
+            Map with number of objects per pixel
+        zarr : np.ndarray
+            Array of redshifts
+        nzarr : np.ndarray 
+            N(z) for each z in zarr
         lmax : int
             Maximum multipole for this tracer
         mask : Mask
             Mask object map (this determines the resolution of the sky maps)
-        n_sampling : int 
-            Number of points where you want to sample the N(z)
-        dz_sampling : float
-            Redshift resolution of the sampling (only used if n_sampling=None)
         templates : np.ndarray
             Sets of maps of contaminant templatest to be subtracted
         """
@@ -101,37 +99,18 @@ class Tracer(object) :
         #Store lmax
         self.lmax=lmax
 
-        #Bin by z_Mean
-        #TODO: would be better to use ML, but fastcat doesn't have that out of the box
-        zm=cat.photoz.getMeanRMS(cat.data)[0]
-        ids=np.where((zm<zf) & (zm>=z0))[0]
-        data_here=cat.data[ids]
-        
-        #Get interval where N(z) will be significant
-        zmin_arr,zmax_arr=cat.photoz.getMinMax(data_here)
-        zmin=np.amin(zmin_arr); zmax=np.amax(zmax_arr)
+        #Store N(z)
+        self.zarr=zarr
+        self.nzarr=nzarr
 
-        #Get N(z) as stacked pdfs
-        if n_sampling==None :
-            dz=dz_sampling
-        else :
-            dz=(zmax-zmin)/n_sampling
-        self.zarr,self.nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
+        #Angular resolution
+        self.nside=mask.nside
+        if hp.npix2nside(len(map_n))!=self.nside :
+            raise ValueError("Mask and map have different resolutions")
 
         #Get sky map
         #1- Get number of objects per pixel
-        dtor=np.pi/180
-        self.nside=mask.nside
-        npix=hp.nside2npix(self.nside)
-        while True:
-            ipix=hp.ang2pix(self.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
-            mp_n=np.bincount(ipix,minlength=npix).astype(float)
-            if not cat.readNextPart():
-                break
-            print "Read extra part...",cat.part
-            ids=np.where((zm<zf) & (zm>=z0))[0]
-            data_here=cat.data[ids]
-
+        mp_n=map_n.copy()
             
         #2- Identify masked pixels
         mp_n*=mask.binary
@@ -153,6 +132,70 @@ class Tracer(object) :
             self.field=nmt.NmtField(mask.total,[mp_delta],templates=templates)
         else :
             self.field=nmt.NmtField(mask.total,[mp_delta])
+
+#Returns map and N(z)
+def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_sampling=-1,fac_neglect=1E-5) :
+
+    nbins=len(z0_arr)
+
+    #Get N(z) as stacked pdfs
+    if n_sampling==None :
+        dz=dz_sampling
+    else :
+        dz=(zmax-zmin)/n_sampling
+    zarr_single=np.arange(zmin,zmax,dz)
+    numz=len(zarr_single)
+
+    nzarr_all=np.zeros([nbins,numz])
+    npix=hp.nside2npix(mask.nside)
+    maps_all=np.zeros([nbins,npix])
+    dtor=np.pi/180
+    while True:
+        zm=cat.photoz.getMeanRMS(cat.data)[0]
+        for ib in np.arange(nbins) :
+            z0=z0_arr[ib]; zf=zf_arr[ib];
+            ids=np.where((zm<zf) & (zm>=z0))[0]
+            data_here=cat.data[ids]
+            zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
+            ipix=hp.ang2pix(mask.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
+            mp_n=np.bincount(ipix,minlength=npix).astype(float)
+
+            nzarr_all[ib,:]+=nzarr
+            maps_all[ib,:]+=mp_n
+        if not cat.readNextPart():
+            break
+    cat.rewind()
+
+    #Find relevant redshift range for each bin
+    zarr_out=[]
+    nzarr_out=[]
+    for n in nzarr_all :
+        mx=np.amax(n)
+        #Find indices that are below threshold
+        ids=np.where(n<mx*fac_neglect)[0]
+        if len(ids)<=0 : #If all entries are above threshold
+            iz0=0; izf=len(n)-1;
+        else :
+            iz0=0
+            if ids[0]==0 : #If first entry is already above threshold just keep going
+                while ((iz0<len(ids)) and (ids[iz0+1]==ids[iz0]+1)) :
+                    iz0+=1
+            if iz0==len(ids)-1 :
+                raise ValueError("Empty bin")
+
+            izf=len(ids)-1
+            if ids[izf]==izf : #If last entry is already above threshold just keep going
+                while((izf>=0) and (ids[izf-1]==ids[izf]-1)) :
+                    izf-=1
+            if izf==0 :
+                raise ValueError("Empty bin")
+
+            #Save only range of redshifts with relevant N(z)
+            #TODO: a different compression scheme might be more efficient
+            zarr_out.append(zarr_single[iz0:izf+1])
+            nzarr_out.append(n[iz0:izf+1])
+
+    return zarr_out,nzarr_out,maps_all
 
 
 def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0.,
@@ -187,12 +230,11 @@ def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0
     ell_eff=bpw.get_effective_ells()
 
     #Generate tracers
-    dtor=np.pi/180
-    npix=hp.nside2npix(nside)
-    tracers=[]
-    for z0,zf,lmax in zip(z0_bins,zf_bins,lmax_bins):
+    #TODO: pass extra sampling parameters
+    zs,nzs,mps=bin_catalog(cat,z0_bins,zf_bins,mask)
+    for zar,nzar,mp,lmax in zip(zs,nzs,mps,lmax_bins):
         print "-- z-bin: %3.2f "%z0
-        tracers.append(Tracer(cat,z0,zf,lmax,mask,templates=templates))
+        tracers.append(Tracer(mp,zar,nar,lmax,mask,templates=templates))
         cat.rewind()
         
     print "Compute power spectra"
