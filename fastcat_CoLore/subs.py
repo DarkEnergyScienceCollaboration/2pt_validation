@@ -140,7 +140,6 @@ def process(o):
     do_stars = (stars is not None)
     time0 = datetime.datetime.now()
     fopath=None
-    isc=None
     for i,param_file in enumerate(o.ipath):
         flist,inif=readColore(param_file)
         dirname, _ = os.path.split(param_file)
@@ -159,8 +158,6 @@ def process(o):
         meta['command_line']=' '.join(sys.argv)
         if (o.ztrue):
             fields.append('z_true')
-        ## create an empty catalog
-        cat = None
         ## create window 
         wfunc=fc.window.getWindowFunc(o)
         ## next create photoz
@@ -175,6 +172,7 @@ def process(o):
        
         fname=fopath+'/fastcat_catalog%i.h5'%(i)
         print "Going to write "+fname+" ..."
+        Nparts=len(flist)
         for i,filename in enumerate(flist):
             if i%msize==mrank:
                 print mranks, "Reading set ",i
@@ -204,25 +202,20 @@ def process(o):
                 cataux.setWindow(wfunc, apply_to_data=True)
                 print "Applying photoz..."
                 cataux.setPhotoZ(pz,apply_to_data=True) 
-                if cat is None:
-                    cat=cataux
+
+                #Add stars
+                if do_stars:
+                    scat=stars.generateStarCatalog(o.Nstars/Nparts)
+                    cataux.appendCatalog(scat)
+                print cataux.data
+                if (Nparts>0):
+                    cataux.writeH5(fname, MPIComm=None,part=(i,Nparts))
                 else:
-                    cat.appendCatalog(cataux)
+                    cataux.writeH5(fname, MPIComm=None,part=None)
+                    
                 t1 = datetime.datetime.now()
                 print "Colore realization read. Elapsed time: ", (t1-time0).total_seconds()
-        #To add the stars just once
-        if do_stars & (isc is None):
-            scat=stars.generateStarCatalog(o.Nstars/msize)
-            cat.appendCatalog(scat)
-            isc = 0
          
-        ## now we need to tell global catalog about PZs and WF
-        cat.setPhotoZ(pz, apply_to_data=False)
-        cat.setWindow(wfunc, apply_to_data=False)
-        ## write out
-        ## Note at this point: each node has it own chunk of data as catalog
-        ## but writeH5 knows how to handle that.
-        cat.writeH5(fname, comm)
 
         time_fin = datetime.datetime.now()
         print 'Done'

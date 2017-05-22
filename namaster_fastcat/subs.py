@@ -123,9 +123,16 @@ class Tracer(object) :
         dtor=np.pi/180
         self.nside=mask.nside
         npix=hp.nside2npix(self.nside)
-        ipix=hp.ang2pix(self.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
-        mp_n=np.bincount(ipix,minlength=npix).astype(float)
-        
+        while True:
+            ipix=hp.ang2pix(self.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
+            mp_n=np.bincount(ipix,minlength=npix).astype(float)
+            if not cat.readNextPart():
+                break
+            print "Read extra part...",cat.part
+            ids=np.where((zm<zf) & (zm>=z0))[0]
+            data_here=cat.data[ids]
+
+            
         #2- Identify masked pixels
         mp_n*=mask.binary
 
@@ -156,16 +163,13 @@ def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0
     nbins=len(z0_bins)
 
 
-    #Read catalog
-    print "Catalog"
     cat=fc.Catalog(read_from=fname_catalog)
-
+    
 
     #Get weights, compute binary mask based on weights, and apodize it if needed
     print "Window"
     mask=Mask(cat,nside,apodization_scale)
     nside=mask.nside
-
 
     #Get contaminant templates
     #TODO: check resolution
@@ -182,16 +186,15 @@ def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0
     bpw=nmt.NmtBin(nside,nlb=bins_ell)
     ell_eff=bpw.get_effective_ells()
 
-
-    print "Subsampling"
     #Generate tracers
     dtor=np.pi/180
     npix=hp.nside2npix(nside)
     tracers=[]
-    for b in np.arange(nbins) :
-        tracers.append(Tracer(cat,z0_bins[b],zf_bins[b],lmax_bins[b],mask,templates=templates))
-
-
+    for z0,zf,lmax in zip(z0_bins,zf_bins,lmax_bins):
+        print "-- z-bin: %3.2f "%z0
+        tracers.append(Tracer(cat,z0,zf,lmax,mask,templates=templates))
+        cat.rewind()
+        
     print "Compute power spectra"
     #Compute coupling matrix
     #TODO: (only done once, assuming all maps have the same mask!)
