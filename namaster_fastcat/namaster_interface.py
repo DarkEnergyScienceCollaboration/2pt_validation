@@ -18,9 +18,9 @@ parser.add_option("--theta-apo", dest="theta_apo", type="float",default=0.,
 # Right now the --templates option doesn't recognize None so as a temporary
 # solution I pass the "default" string "none".
 parser.add_option("--templates", dest="templates_fname", default="none",
-                  help="Templates to subtract from power-spectrum")
-parser.add_option("--delta-ell", dest="delta_ell", default=1,
-                      help="Width of ell binning")
+                  type="string",help="Templates to subtract from power-spectrum")
+parser.add_option("--delta-ell", dest="delta_ell", default=50,type="int",
+                  help="Width of ell binning")
 
 (o, args) = parser.parse_args()
 

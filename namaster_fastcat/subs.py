@@ -105,6 +105,7 @@ class Tracer(object) :
 
         #Angular resolution
         self.nside=mask.nside
+        npix=hp.nside2npix(self.nside)
         if hp.npix2nside(len(map_n))!=self.nside :
             raise ValueError("Mask and map have different resolutions")
 
@@ -228,13 +229,13 @@ def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0
     print "Bandpowers"
     bpw=nmt.NmtBin(nside,nlb=bins_ell)
     ell_eff=bpw.get_effective_ells()
-
+    tracers=[]
     #Generate tracers
     #TODO: pass extra sampling parameters
     zs,nzs,mps=bin_catalog(cat,z0_bins,zf_bins,mask)
     for zar,nzar,mp,lmax in zip(zs,nzs,mps,lmax_bins):
-        print "-- z-bin: %3.2f "%z0
-        tracers.append(Tracer(mp,zar,nar,lmax,mask,templates=templates))
+        print "-- z-bin: %3.2f "%zar[0]
+        tracers.append(Tracer(mp,zar,nzar,lmax,mask,templates=templates))
         cat.rewind()
         
     print "Compute power spectra"
