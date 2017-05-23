@@ -1,21 +1,31 @@
 #!/usr/bin/env python
 from subs import *
 import sys
+from optparse import OptionParser
 
-if len(sys.argv) != 8 :
-    print "Input parameters : fname_in nside fname_bins_z theta_apo templates_fname delta_ell fname_out"
-    exit(1)
+parser = OptionParser()
 
-fname_in=sys.argv[1] #
-nside=int(sys.argv[2]) #
-fname_bins_z=sys.argv[3] #
-theta_apo=float(sys.argv[4]) #
-templates_fname=sys.argv[5] #
-delta_ell=int(sys.argv[6]) #
-fname_out=sys.argv[7] #
+parser.add_option("--input-file", dest="fname_in",default=None,
+                  help="Path to fastcat input", type="string")
+parser.add_option("--output-file", dest="fname_out", default=None,
+                  help="Path to output", type="string")
+parser.add_option("--nside", dest="nside", default=2048,
+                  help="Nside resolution of maps", type="int")
+parser.add_option("--nz-bins-file", dest="fname_bins_z", default=None,
+                  help="Name of the binning file", type="string")
+parser.add_option("--theta-apo", dest="theta_apo", type="float",default=0.,
+                  help="Apodization angle")
+# Right now the --templates option doesn't recognize None so as a temporary
+# solution I pass the "default" string "none".
+parser.add_option("--templates", dest="templates_fname", default="none",
+                  help="Templates to subtract from power-spectrum")
+parser.add_option("--delta-ell", dest="delta_ell", default=1,
+                      help="Width of ell binning")
 
-process_catalog(fname_in,fname_bins_z,nside,fname_out,
-                apodization_scale=theta_apo,fname_templates=templates_fname,bins_ell=delta_ell)
+(o, args) = parser.parse_args()
+
+process_catalog(o.fname_in,o.fname_bins_z,o.nside,o.fname_out,
+                apodization_scale=o.theta_apo,fname_templates=o.templates_fname,bins_ell=o.delta_ell)
 
 #TODO: add options for
 # - z-binning
@@ -23,3 +33,4 @@ process_catalog(fname_in,fname_bins_z,nside,fname_out,
 #TODO: extract ell-windows and write in SACC format
 #TODO: subtract shot noise
 #TODO: deal with recursive debiasing
+#TODO: change syntax for templates_fname in subs.py to accept None
