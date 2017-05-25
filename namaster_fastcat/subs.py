@@ -4,8 +4,8 @@ import fastcat as fc
 import sys
 import pymaster as nmt
 import sacc
-
-
+import matplotlib.pyplot as plt
+debug=True
 class Mask(object) :
     """ Container for angular window function
 
@@ -37,7 +37,16 @@ class Mask(object) :
         theta_apo : float
             Apodization scale in degrees
         """
-        self.weights=cat.window.map.copy()
+        if cat.window.typestr=='decbcut':
+            npix=hp.nside2npix(nside)
+            ind_aux=np.arange(0,npix)
+            theta,phi=hp.pix2ang(nside,ind_aux)
+            self.weights=cat.window(phi*180/np.pi,90-theta*180/np.pi)
+        else:
+            self.weights=cat.window.map.copy()
+        if debug:
+            hp.mollview(self.weights)
+            plt.show() 
         #Figure out which pixels are empty
         self.ip_nomask=np.where(self.weights>0)[0] 
         #Generate sky mask and apply apodization
@@ -50,18 +59,27 @@ class Mask(object) :
         #Final weights are a combination of mask + depth fluctuations
         self.total=self.mask_apo*self.weights
         #Can't generate maps with pixels larger than the mask
-        if nside<cat.window.nside :
-            #If mask pixelization is higher, upgrade output maps
-            self.nside=cat.window.nside
-        else :
-            #If mask pixelization is lower, upgrade mask
+        if cat.window.typestr!='decbcut':
+            if nside<cat.window.nside:
+                #If mask pixelization is higher, upgrade output maps
+                self.nside=cat.window.nside
+            else :
+                #If mask pixelization is lower, upgrade mask
+                self.nside=nside
+                self.total  =hp.ud_grade(self.total  ,nside_out=nside)
+                self.binary =hp.ud_grade(self.binary ,nside_out=nside)
+                self.weights=hp.ud_grade(self.weights,nside_out=nside)
+                self.ip_nomask=np.where(self.weights>0)[0] 
+        else:
             self.nside=nside
             self.total  =hp.ud_grade(self.total  ,nside_out=nside)
             self.binary =hp.ud_grade(self.binary ,nside_out=nside)
             self.weights=hp.ud_grade(self.weights,nside_out=nside)
-            self.ip_nomask=np.where(self.weights>0)[0] 
-
-
+            self.ip_nomask=np.where(self.weights>0)[0]
+        if debug:
+            hp.mollview(self.weights)
+            plt.show()
+      
 class Tracer(object) :
     """Object containing all the information about a given sky tracer
     
@@ -126,14 +144,27 @@ class Tracer(object) :
         #      currently we use the whole (unmasked) sky.
         norm=np.sum(mp_n)/np.sum(mask.weights)
         mp_delta=np.zeros(npix)
-        mp_delta[mask.ip_nomask]=norm*(mp_n[mask.ip_nomask]/mask.weights[mask.ip_nomask])-1.
-
+        mp_delta[mask.ip_nomask]=1./norm*(mp_n[mask.ip_nomask]/mask.weights[mask.ip_nomask])-1.
+        if debug:
+            print np.max(mp_delta[mask.ip_nomask]), np.min(mp_delta[mask.ip_nomask]), '; Max= ', np.max(mp_n[mask.ip_nomask]/mask.weights[mask.ip_nomask]), ' Mean= ',norm
+            hp.mollview(mp_delta)
+            plt.show()
+            ma_delta = hp.ma(mp_delta)
+            ma_delta.mask = np.logical_not(mask)
+            cl = hp.anafast(ma_delta.filled(), lmax=lmax)
+            plt.figure()
+            plt.plot(np.arange(len(cl)),cl)
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.xlabel(r'$l$')
+            plt.ylabel(r'$C_{l}$')
+            plt.show() 
         #4- Generate NaMaster fields (passing contaminants if necessary)
-        if templates is None :
+        if templates is not None :
             self.field=nmt.NmtField(mask.total,[mp_delta],templates=templates)
         else :
             self.field=nmt.NmtField(mask.total,[mp_delta])
-
+         
 #Returns map and N(z)
 def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_sampling=-1,fac_neglect=1E-5) :
 
@@ -234,7 +265,7 @@ def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0
     #TODO: pass extra sampling parameters
     zs,nzs,mps=bin_catalog(cat,z0_bins,zf_bins,mask)
     for zar,nzar,mp,lmax in zip(zs,nzs,mps,lmax_bins):
-        print "-- z-bin: %3.2f "%zar[0]
+        print "-- z-bin: %3.2f "%np.average(zar,weights=nzar)
         tracers.append(Tracer(mp,zar,nzar,lmax,mask,templates=templates))
         cat.rewind()
         
@@ -268,7 +299,14 @@ def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0
                 cl_bias=None
             cls_all[(b1,b2)]=compute_master(f1,f2,w,clb=cl_bias)[0]
 
-
+        if debug:
+            plt.figure()
+            plt.plot(ell_eff,cls_all[(b1,b1)])
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.xlabel(r'$l$')
+            plt.ylabel(r'$C_{l}$')
+            plt.show()
     print "Translating into SACC"
     #Transform everything into SACC format
     #1- Generate SACC tracers
