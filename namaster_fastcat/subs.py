@@ -5,7 +5,54 @@ import sys
 import pymaster as nmt
 import sacc
 import matplotlib.pyplot as plt
+import h5py
+from optparse import OptionParser
+
 debug=True
+
+def initMPI(o):
+    global comm, mrank, mranks, msize 
+    
+    if o.use_mpi:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        mrank = comm.Get_rank()
+        mranks = "["+str(mrank)+"]:"
+        msize = comm.Get_size()
+        if (mrank==0):
+            print "MPI Size:", msize
+    else:
+        comm=None
+        mrank=0
+        msize=1
+        mranks = ""
+
+def setupOptions():
+    parser = OptionParser()
+
+    parser.add_option("--input-file", dest="fname_in",default=None,
+                      help="Path to fastcat input", type="string")
+    parser.add_option("--output-file", dest="fname_out", default=None,
+                      help="Path to output", type="string")
+    parser.add_option("--nside", dest="nside", default=2048,
+                      help="Nside resolution of maps", type="int")
+    parser.add_option("--nz-bins-file", dest="fname_bins_z", default=None,
+                      help="Name of the binning file", type="string")
+    parser.add_option("--theta-apo", dest="theta_apo", type="float",default=0.,
+                      help="Apodization angle")
+    # Right now the --templates option doesn't recognize None so as a temporary
+    # solution I pass the "default" string "none".
+    parser.add_option("--templates", dest="templates_fname", default="none",
+                      type="string",help="Templates to subtract from power-spectrum")
+    parser.add_option("--delta-ell", dest="delta_ell", default=50,type="int",
+                      help="Width of ell binning")
+    parser.add_option("--mpi", dest="use_mpi", default=False,
+                      help="If used, use mpi4py for parallelization ",action="store_true")
+
+    (o, args) = parser.parse_args()
+    return o,args
+
+
 class Mask(object) :
     """ Container for angular window function
 
@@ -178,25 +225,49 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
     zarr_single=np.arange(zmin,zmax,dz)
     numz=len(zarr_single)
 
-    nzarr_all=np.zeros([nbins,numz])
+    nzarr_all_here=np.zeros([nbins,numz])
     npix=hp.nside2npix(mask.nside)
-    maps_all=np.zeros([nbins,npix])
+    maps_all_here=np.zeros([nbins,npix])
     dtor=np.pi/180
-    while True:
-        zm=cat.photoz.getMeanRMS(cat.data)[0]
+
+    fnames=[] #fnames will contain all the files that this node should read
+    for i in np.arange(cat.Npart) :
+        if i%msize==mrank :
+            fnames.append(cat.parted_fname(cat.filename,i))
+
+    #Compute a map with #part per pix and an N(z) for all the files corresponding to this node
+    for f in fnames :
+        of=h5py.File(f,"r")
+        data=of["objects"].value
+        zm=cat.photoz.getMeanRMS(data)[0]
         for ib in np.arange(nbins) :
             z0=z0_arr[ib]; zf=zf_arr[ib];
             ids=np.where((zm<zf) & (zm>=z0))[0]
-            data_here=cat.data[ids]
+            data_here=data[ids]
             zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
             ipix=hp.ang2pix(mask.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
             mp_n=np.bincount(ipix,minlength=npix).astype(float)
 
-            nzarr_all[ib,:]+=nzarr
-            maps_all[ib,:]+=mp_n
-        if not cat.readNextPart():
-            break
-    cat.rewind()
+            nzarr_all_here[ib,:]+=nzarr
+            maps_all_here[ib,:]+=mp_n
+
+    #Now reduce maps and N(z)'s for all nodes into a common one
+    #Only master node will do stuff afterwards
+    if msize==1 :
+        maps_all=maps_all_here
+        nzarr_all=nzarr_all_here
+    else :
+        if mrank==0 :
+            maps_all=np.zeros_like(maps_all_here)
+            nzarr_all=np.zeros_like(nzarr_all_here)
+        else :
+            maps_all=None;
+            nzarr_all=None
+        comm.Reduce(maps_all_here,maps_all)
+        comm.Reduce(nzarr_all_here,nzarr_all)
+
+    if mrank!=0 :
+        return None,None,None
 
     #Find relevant redshift range for each bin
     zarr_out=[]
@@ -230,26 +301,26 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
     return zarr_out,nzarr_out,maps_all
 
 
-def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0.,
-                    fname_templates="none",bins_ell=4) :
+def process_catalog(o) :
+
     #Read z-binning
     print "Bins"
-    z0_bins,zf_bins,lmax_bins=np.loadtxt(fname_bins,unpack=True)
+    z0_bins,zf_bins,lmax_bins=np.loadtxt(o.fname_bins_z,unpack=True)
     nbins=len(z0_bins)
 
 
-    cat=fc.Catalog(read_from=fname_catalog)
+    cat=fc.Catalog(read_from=o.fname_in)
     
 
     #Get weights, compute binary mask based on weights, and apodize it if needed
     print "Window"
-    mask=Mask(cat,nside,apodization_scale)
+    mask=Mask(cat,o.nside,o.theta_apo)
     nside=mask.nside
 
     #Get contaminant templates
     #TODO: check resolution
-    if fname_templates!="none" :
-        templates=[[t] for t in hp.read_map(fname_templates,field=None)]
+    if o.templates_fname!="none" :
+        templates=[[t] for t in hp.read_map(o.templates_fname,field=None)]
         ntemp=len(templates)
     else :
         templates=None
@@ -258,12 +329,15 @@ def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0
 
     #Generate bandpowers binning scheme (we're assuming all maps will use the same bandpowers!)
     print "Bandpowers"
-    bpw=nmt.NmtBin(nside,nlb=bins_ell)
+    bpw=nmt.NmtBin(nside,nlb=o.delta_ell)
     ell_eff=bpw.get_effective_ells()
     tracers=[]
     #Generate tracers
     #TODO: pass extra sampling parameters
     zs,nzs,mps=bin_catalog(cat,z0_bins,zf_bins,mask)
+    if mrank!=0 :
+        return
+
     for zar,nzar,mp,lmax in zip(zs,nzs,mps,lmax_bins):
         print "-- z-bin: %3.2f "%np.average(zar,weights=nzar)
         tracers.append(Tracer(mp,zar,nzar,lmax,mask,templates=templates))
@@ -335,4 +409,4 @@ def process_catalog(fname_catalog,fname_bins,nside,fname_out,apodization_scale=0
 
     #4- Create SACC file and write to file
     csacc=sacc.SACC(stracers,sbin,svec)
-    csacc.saveToHDF(fname_out)
+    csacc.saveToHDF(o.fname_out)
