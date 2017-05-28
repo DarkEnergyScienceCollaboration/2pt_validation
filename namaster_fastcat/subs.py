@@ -230,26 +230,21 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
     maps_all_here=np.zeros([nbins,npix])
     dtor=np.pi/180
 
-    fnames=[] #fnames will contain all the files that this node should read
-    for i in np.arange(cat.Npart) :
-        if i%msize==mrank :
-            fnames.append(cat.parted_fname(cat.filename,i))
 
     #Compute a map with #part per pix and an N(z) for all the files corresponding to this node
-    for f in fnames :
-        of=h5py.File(f,"r")
-        data=of["objects"].value
-        zm=cat.photoz.getMeanRMS(data)[0]
-        for ib in np.arange(nbins) :
-            z0=z0_arr[ib]; zf=zf_arr[ib];
-            ids=np.where((zm<zf) & (zm>=z0))[0]
-            data_here=data[ids]
-            zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
-            ipix=hp.ang2pix(mask.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
-            mp_n=np.bincount(ipix,minlength=npix).astype(float)
-
-            nzarr_all_here[ib,:]+=nzarr
-            maps_all_here[ib,:]+=mp_n
+    for i in np.arange(cat.Npart):
+        if (i%msize==mrank):
+            cat.readNextPart(i)
+            zm=cat.photoz.getMeanRMS(cat.data)[0]
+            for ib in np.arange(nbins) :
+                z0=z0_arr[ib]; zf=zf_arr[ib];
+                ids=np.where((zm<zf) & (zm>=z0))[0]
+                data_here=cat.data[ids]
+                zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
+                ipix=hp.ang2pix(mask.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
+                mp_n=np.bincount(ipix,minlength=npix).astype(float)
+                nzarr_all_here[ib,:]+=nzarr
+                maps_all_here[ib,:]+=mp_n
 
     #Now reduce maps and N(z)'s for all nodes into a common one
     #Only master node will do stuff afterwards
