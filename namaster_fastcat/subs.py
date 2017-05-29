@@ -7,6 +7,7 @@ import sacc
 import matplotlib.pyplot as plt
 import h5py
 from optparse import OptionParser
+import os
 
 debug=True
 
@@ -48,6 +49,8 @@ def setupOptions():
                       help="Width of ell binning")
     parser.add_option("--mpi", dest="use_mpi", default=False,
                       help="If used, use mpi4py for parallelization ",action="store_true")
+    parser.add_option("--nmt-workspace",dest="nmt_workspace",default="none",
+                      help="Path to file containing the NaMaster workspace for this window function",type="string")
 
     (o, args) = parser.parse_args()
     return o,args
@@ -343,7 +346,12 @@ def process_catalog(o) :
     #TODO: (only done once, assuming all maps have the same mask!)
     print "  Computing coupling matrix"
     w=nmt.NmtWorkspace()
-    w.compute_coupling_matrix(tracers[0].field,tracers[0].field,bpw)
+    if not(os.path.isfile(o.nmt_workspace)) :
+        w.compute_coupling_matrix(tracers[0].field,tracers[0].field,bpw)
+        if o.nmt_workspace!="none" :
+            w.write_to(o.nmt_workspace)
+    else :
+        w.read_from(o.nmt_workspace)
 
     #Compute all cross-correlations
     def compute_master(fa,fb,wsp,clb) :
