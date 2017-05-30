@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import h5py
 from optparse import OptionParser
 import os
-
-debug=True
+from time import time
+debug=False
 
 def initMPI(o):
     global comm, mrank, mranks, msize 
@@ -232,7 +232,7 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
     npix=hp.nside2npix(mask.nside)
     maps_all_here=np.zeros([nbins,npix])
     dtor=np.pi/180
-
+    t0 = time()
 
     #Compute a map with #part per pix and an N(z) for all the files corresponding to this node
     for i in np.arange(cat.Npart):
@@ -248,7 +248,7 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
                 mp_n=np.bincount(ipix,minlength=npix).astype(float)
                 nzarr_all_here[ib,:]+=nzarr
                 maps_all_here[ib,:]+=mp_n
-
+            print 'Created map ', i, ' elapsed time, ', time()-t0, ' seconds'
     #Now reduce maps and N(z)'s for all nodes into a common one
     #Only master node will do stuff afterwards
     if msize==1 :
@@ -363,7 +363,7 @@ def process_catalog(o) :
     #This can be done interatively from a first guess using cl_bias=0, but I haven't coded that up yet.
     #For the moment we will use cl_guess=0.
     cl_guess=np.zeros(3*nside)
-
+    t1 = time()
     print "  Computing power spectrum"
     cls_all={}
     for b1 in np.arange(nbins) :
@@ -375,7 +375,7 @@ def process_catalog(o) :
             else :
                 cl_bias=None
             cls_all[(b1,b2)]=compute_master(f1,f2,w,clb=cl_bias)[0]
-
+        print 'Computed bin: ', b1, b2, ' in ', time()-t1, ' s'
         if debug:
             plt.figure()
             plt.plot(ell_eff,cls_all[(b1,b1)])
