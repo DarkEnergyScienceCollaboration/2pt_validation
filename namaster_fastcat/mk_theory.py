@@ -18,7 +18,7 @@ def getTheoryVec(s, cls_theory):
         vec[ndx]=cls_theory[(t1i,t2i)]
     return sacc.MeanVec(vec)
 print 'Setting up cosmology'
-cosmo = ccl.Cosmology(ccl.Parameters(Omega_c=0.27,Omega_b=0.045,h=0.67,sigma8=0.8,n_s=0.96,),transfer_function='eisenstein_hu',matter_power_spectrum='linear')
+cosmo = ccl.Cosmology(ccl.Parameters(Omega_c=0.266,Omega_b=0.049,h=0.69,sigma8=0.8,n_s=0.96,))
 print 'Reading SACC file'
 #SACC File with the N(z) to analyze
 binning_sacc = sacc.SACC.loadFromHDF('../test/catalog0.sacc')
