@@ -51,7 +51,8 @@ def setupOptions():
                       help="If used, use mpi4py for parallelization ",action="store_true")
     parser.add_option("--nmt-workspace",dest="nmt_workspace",default="none",
                       help="Path to file containing the NaMaster workspace for this window function",type="string")
-
+    parser.add_option("--save-map",dest="save_map",default=False,action="store_true",
+                      help="Save input maps to namaster")
     (o, args) = parser.parse_args()
     return o,args
 
@@ -337,8 +338,11 @@ def process_catalog(o) :
         return
 
     for zar,nzar,mp,lmax in zip(zs,nzs,mps,lmax_bins):
-        print "-- z-bin: %3.2f "%np.average(zar,weights=nzar)
+        zav = np.average(zar,weights=nzar)
+        print "-- z-bin: %3.2f "%zav
         tracers.append(Tracer(mp,zar,nzar,lmax,mask,templates=templates))
+        if o.save_map:
+            hp.write_map("map_%3.2f.fits"%zav,mp)
         cat.rewind()
         
     print "Compute power spectra"
