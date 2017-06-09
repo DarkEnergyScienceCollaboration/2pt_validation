@@ -106,6 +106,6 @@ export LD_LIBRARY_PATH=/opt/cray/hdf5-parallel/1.8.16/INTEL/15.0/lib:${LD_LIBRAR
 srun -n 32 -c 64 /PATH_TO_COLORE/CoLoRe param_files/param_colore_${i}.cfg 
 EOF
 
-#sbatch run_colore_files/run_colore_${i}.sh
+sbatch run_colore_files/run_colore_${i}.sh
 done
 
