@@ -6,15 +6,19 @@ This document intends to guide the user in the process of generating mock catalo
 
 Requirements:
 
-[CoLoRe](https://github.com/damonge/colore)
-[SACC](https://github.com/LSSTDESC/sacc)
-[fastcat](https://github.com/slosar/fastcat)
-[NaMaster](https://github.com/damonge/namaster)
+* [CoLoRe](https://github.com/damonge/colore)
+
+* [SACC](https://github.com/LSSTDESC/sacc)
+
+* [fastcat](https://github.com/slosar/fastcat)
+
+* [NaMaster](https://github.com/damonge/namaster)
 
 Optional requirements (only necessary for cosmological parameter retrieval):
 
-[CCL](https://github.com/LSSTDESC/CCL)
-[LSSLike](https://github.com/LSSTDESC/LSSLike)
+* [CCL](https://github.com/LSSTDESC/CCL)
+
+* [LSSLike](https://github.com/LSSTDESC/LSSLike)
 
 Each one of the required pieces of software has its own installation procedure. If you find any bugs or problems please contact the authors.
 
