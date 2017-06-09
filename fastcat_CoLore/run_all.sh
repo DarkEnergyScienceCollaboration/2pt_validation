@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH --partition debug
+#SBATCH --partition regular
 ##SBATCH --qos premium
 #SBATCH --nodes 8
 #SBATCH --time=00:08:00
