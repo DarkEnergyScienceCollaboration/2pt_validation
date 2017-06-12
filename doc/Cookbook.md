@@ -85,6 +85,11 @@ To compute the power-spectra you have to follow these steps:
 
 If you want you can compute the theoretical prediction for the sample SACC file just typing `python mk_theory.py` in the directory `namaster_fastcat`. You can modify the relevant paths in the file if you want to calculate the theoretical prediction for the power-spectra for other cases.
 
+To account for the different interpolation/gridding operations that take place within CoLoRe, the P(k) used to compute the theoretical predictions should be smoothed with a Gaussian radius given by:
+  R_smooth = (R_s^2 + (0.5*a_grid)^2)^1/2
+where R_s is the smoothing scale parmeter passed to CoLoRe and a_grid is the grid size (this is reported by CoLoRe, and can be computed as 2*chi(z_max)*(1+2/Ngrid)/Ngrid, where Ngrid is the number of grid cells per dimension and chi(z) is the radial comoving distance to redshift z.
+
+
 ### Final notes and disclaimer
 
 We recommend to use the anaconda distribution in Cori and install the relevant python packages using the option `python setup.py install --user` since this makes the installation/update process easier. Please, post issues or send your questions or comments to any of the authors.
