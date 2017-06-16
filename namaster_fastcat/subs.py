@@ -9,6 +9,7 @@ import h5py
 from optparse import OptionParser
 import os
 from time import time
+from numpy.linalg import inv
 debug=False
 
 def initMPI(o):
@@ -53,6 +54,10 @@ def setupOptions():
                       help="Path to file containing the NaMaster workspace for this window function",type="string")
     parser.add_option("--save-map",dest="save_map",default=False,action="store_true",
                       help="Save input maps to namaster")
+    parser.add_option("--compute-covariance",dest="compute_covariance",default=False,action="store_true",
+                      help="Compute the theoretical covariance matrix using the predicted Cls")
+    parser.add_option("--compute-theory",dest="compute_theory",default=False,action="store_true",
+                      help="Compute the theoretical prediction for the power-spectra and use it for the covariances")
     (o, args) = parser.parse_args()
     return o,args
 
@@ -299,6 +304,68 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
 
     return zarr_out,nzarr_out,maps_all
 
+def compute_prediction(fc_catalog,sacc_obj,lmax):
+    """This routine ingests a fastcat catalog and the sacc object containing the
+    requested binning and tracers and outputs a sacc object containing the predicted
+    power-spectra"""
+    try:
+        import pyccl as ccl
+    except ImportError:
+        raise ImportError('Failed to import pyccl. Cannot compute theoretical \
+            predictions without CCL.')
+    def getTheories(ccl_cosmo,s,ctracers):
+        theo={}
+        for t1i,t2i,ells,_ in s.sortTracers():
+            cls=ccl.angular_cl(ccl_cosmo,ctracers[t1i],ctracers[t2i],ells)
+            theo[(t1i,t2i)]=cls
+            theo[(t2i,t1i)]=cls
+        return theo
+    def getTheoryVec(s, cls_theory):
+        vec=np.zeros((s.size(),))
+        for t1i,t2i,ells,ndx in s.sortTracers():
+            vec[ndx]=cls_theory[(t1i,t2i)]
+        return sacc.MeanVec(vec)
+
+    #This is hardcoded for now to calculate the theoretical predictions and the grid scale
+    hhub=0.69
+    zmax=2.5
+    ngrid=3072
+    cosmo = ccl.Cosmology(ccl.Parameters(Omega_c=0.266,Omega_b=0.049,h=hhub,sigma8=0.8,n_s=0.96,),matter_power_spectrum='linear',transfer_function='eisenstein_hu')
+    a_grid=2*ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)/ngrid*hhub 
+    tracers = sacc_obj.tracers
+    Ntracer = len(tracers)
+    lvals = np.arange(lmax+1) 
+    type,ell,t1,q1,t2,q2=[],[],[],[],[],[]
+    for t1i in range(Ntracer):
+        for t2i in range(t1i,Ntracer):
+            for l in lvals:
+                type.append('F')
+                ell.append(l)
+                t1.append(t1i)
+                q1.append('P')
+                t2.append(t2i)
+                q2.append('P')          
+    binning=sacc.Binning(type,ell,t1,q1,t2,q2)
+    sacc_obj.binning=binning
+    bias = fc_catalog.bz
+    cltracers=[ccl.ClTracer(cosmo,'nc',False,False,n=(t.z,t.Nz),bias=(fc_catalog.bz['z'],fc_catalog.bz['bz']),r_smooth=0.5*a_grid) for t in tracers]
+    theories = getTheories(cosmo,sacc_obj,cltracers)
+    mean=getTheoryVec(sacc_obj,theories)
+    csacc=sacc.SACC(tracers,binning,mean)
+    return csacc
+
+def compute_covariance(w,clpred,binning,t1,t2,t3,t4):
+    """Routine to compute the covariance matrix using NaMaster
+    needs a NaMaster workspace w, the 4 tracers considered, and an array with the predicted cls
+    cl_t1t3, cl_t1t4, cl_t2t3, cl_t2t4.
+    """
+    
+    t1t3 = np.logical_and(binning.binar['T1']==min(t1,t3),binning.binar['T2']==max(t3,t1))
+    t1t4 = np.logical_and(binning.binar['T1']==min(t1,t4),binning.binar['T2']==max(t4,t1))
+    t2t3 = np.logical_and(binning.binar['T1']==min(t2,t3),binning.binar['T2']==max(t2,t3))
+    t2t4 = np.logical_and(binning.binar['T1']==min(t2,t4),binning.binar['T2']==max(t4,t2))
+    print w.wsp.lmax, np.count_nonzero(t2t4), np.count_nonzero(t1t3), np.count_nonzero(t1t4), np.count_nonzero(t2t3), t1,t2,t3,t4  
+    return nmt.gaussian_covariance(w,w,clpred[t1t3],clpred[t1t4],clpred[t2t3],clpred[t2t4])
 
 def process_catalog(o) :
 
@@ -416,4 +483,31 @@ def process_catalog(o) :
 
     #4- Create SACC file and write to file
     csacc=sacc.SACC(stracers,sbin,svec)
+    #5- Compute covariance if needed
+    if o.compute_theory:
+        print "Computing theoretical prediction"
+        sacc_th = compute_prediction(cat,csacc,w.wsp.lmax)
+        sacc_th.saveToHDF(o.fname_out+"_theory")
+    else:
+        sacc_th = csacc
+    if o.compute_covariance:
+        print "Computing covariance"
+        cov_all={}
+        tcov0 = time()
+        #This doesn't avoid some repetitions but it is the simplest way
+        for i1 in np.arange(nbins):
+             for i2 in np.arange(i1,nbins):
+                 for i3 in np.arange(nbins):
+                     for i4 in np.arange(i3,nbins): 
+                         cov_all[(i1,i2,i3,i4)]=compute_covariance(w,sacc_th.mean.vector,sacc_th.binning,i1,i2,i3,i4)
+                         cov_all[(i2,i1,i4,i3)]=cov_all[(i1,i2,i3,i4)]
+        cov=np.zeros((ssbin.size(),ssbin.size()))
+        for t1i,t2i,ells,ndx in ssbin.sortTracers():
+            for t3i,t4i,ells2,ndy in ssbin.sortTracers():
+                lmax=min(tracers[t1i].lmax,tracers[t2i].lmax,tracers[t3i].lmax,tracers[t4i].lmax)
+                cov[ndx,ndy]=cov_all[(t1i,t2i,t3i,t4i)][ell_eff<lmax,ell_eff<lmax]
+        icov=inv(cov)
+        precision=sacc.Precision(icov,"dense",sbin)
+        csacc=sacc.SACC(stracers,sbin,svec,precision)
+        print 'Computed covariance in', time()-tcov0, ' seconds'
     csacc.saveToHDF(o.fname_out)
