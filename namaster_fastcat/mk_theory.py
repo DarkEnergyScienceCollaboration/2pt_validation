@@ -35,7 +35,7 @@ binning_sacc = sacc.SACC.loadFromHDF('../test/catalog0.sacc')
 bias_tab = astropy.table.Table.read('../test/bz_lsst.txt',format='ascii')
 tracers = binning_sacc.tracers
 print 'Got ',len(tracers),' tracers'
-cltracers=[ccl.ClTracerNumberCounts(cosmo,False,False,n=(t.z,t.Nz),bias=(bias_tab['col1'],bias_tab['col2']),r_smooth=0.5*a_grid) for t in tracers]
+cltracers=[ccl.ClTracer(cosmo,'nc',False,False,n=(t.z,t.Nz),bias=(bias_tab['col1'],bias_tab['col2']),r_smooth=0.5*a_grid) for t in tracers]
 print 'Cl tracers ready'
 theories = getTheories(cosmo,binning_sacc,cltracers)
 mean=getTheoryVec(binning_sacc,theories)
