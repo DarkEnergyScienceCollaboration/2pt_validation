@@ -354,7 +354,7 @@ def compute_prediction(fc_catalog,sacc_obj,lmax):
     csacc=sacc.SACC(tracers,binning,mean)
     return csacc
 
-def compute_covariance(w,clpred,binning,t1,t2,t3,t4,nz1,nz2,nz3,nz4,tot_area):
+def compute_covariance(w,clpred,binning,t1,t2,t3,t4,nz1,nz2,nz3,nz4,tot_area,cw):
     """Routine to compute the covariance matrix using NaMaster
     needs a NaMaster workspace w, the 4 tracers considered, and an array with the predicted cls
     cl_t1t3, cl_t1t4, cl_t2t3, cl_t2t4.
@@ -365,11 +365,23 @@ def compute_covariance(w,clpred,binning,t1,t2,t3,t4,nz1,nz2,nz3,nz4,tot_area):
     t2t3 = np.logical_and(binning.binar['T1']==min(t2,t3),binning.binar['T2']==max(t2,t3))
     t2t4 = np.logical_and(binning.binar['T1']==min(t2,t4),binning.binar['T2']==max(t4,t2))
     print w.wsp.lmax, np.count_nonzero(t2t4), np.count_nonzero(t1t3), np.count_nonzero(t1t4), np.count_nonzero(t2t3), t1,t2,t3,t4
-    c13 = clpred[t1t3]+tot_area/(nz1*nz3)
-    c14 = clpred[t1t4]+tot_area/(nz1*nz4)
-    c23 = clpred[t2t3]+tot_area/(nz2*nz3)
-    c24 = clpred[t2t4]+tot_area/(nz2*nz4)  
-    return nmt.gaussian_covariance(w,w,c13,c14,c23,c24)
+    if t1==t3:
+        c13 = clpred[t1t3]+tot_area/(nz1*nz3)
+    else:
+        c13 = clpred[t1t3]
+    if t1==t4:
+        c14 = clpred[t1t4]+tot_area/(nz1*nz4)
+    else:
+        c14 = clpred[t1t4]
+    if t2==t3:
+        c23 = clpred[t2t3]+tot_area/(nz2*nz3)
+    else:
+        c23 = clpred[t2t3]
+    if t2==t4:
+        c24 = clpred[t2t4]+tot_area/(nz2*nz4)
+    else:
+        c24 = clpred[t2t4]  
+    return nmt.gaussian_covariance(cw,c13,c14,c23,c24)
 
 def process_catalog(o) :
 
@@ -484,7 +496,8 @@ def process_catalog(o) :
         lmax=min(tracers[t1i].lmax,tracers[t2i].lmax)
         vec[ndx]=cls_all[(t1i,t2i)][np.where(ell_eff<lmax)[0]]
     svec=sacc.MeanVec(vec)
-
+    cw = nmt.covariance.NmtCovarianceWorkspace()
+    cw.compute_coupling_coefficients(w,w)
     #4- Create SACC file and write to file
     csacc=sacc.SACC(stracers,sbin,svec)
     #5- Compute covariance if needed
@@ -503,7 +516,7 @@ def process_catalog(o) :
              for i2 in np.arange(i1,nbins):
                  for i3 in np.arange(nbins):
                      for i4 in np.arange(i3,nbins): 
-                         cov_all[(i1,i2,i3,i4)]=compute_covariance(w,sacc_th.mean.vector,sacc_th.binning,i1,i2,i3,i4,np.sum(tracers[i1].nzarr),np.sum(tracers[i2].nzarr),np.sum(tracers[i3].nzarr),np.sum(tracers[i4].nzarr),tot_area)
+                         cov_all[(i1,i2,i3,i4)]=compute_covariance(w,sacc_th.mean.vector,sacc_th.binning,i1,i2,i3,i4,np.sum(tracers[i1].nzarr),np.sum(tracers[i2].nzarr),np.sum(tracers[i3].nzarr),np.sum(tracers[i4].nzarr),tot_area,cw)
                          cov_all[(i2,i1,i4,i3)]=cov_all[(i1,i2,i3,i4)]
         cov=np.zeros((ssbin.size(),ssbin.size()))
         for t1i,t2i,ells,ndx in ssbin.sortTracers():
