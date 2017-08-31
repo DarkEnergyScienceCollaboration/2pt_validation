@@ -10,7 +10,8 @@ from optparse import OptionParser
 import os
 from time import time
 from numpy.linalg import inv
-debug=False
+import astropy.table
+debug=True
 
 def initMPI(o):
     global comm, mrank, mranks, msize 
@@ -58,6 +59,7 @@ def setupOptions():
                       help="Compute the theoretical covariance matrix using the predicted Cls")
     parser.add_option("--compute-theory",dest="compute_theory",default=False,action="store_true",
                       help="Compute the theoretical prediction for the power-spectra and use it for the covariances")
+
     (o, args) = parser.parse_args()
     return o,args
 
@@ -98,6 +100,8 @@ class Mask(object) :
             ind_aux=np.arange(0,npix)
             theta,phi=hp.pix2ang(nside,ind_aux)
             self.weights=cat.window(phi*180/np.pi,90-theta*180/np.pi)
+        elif cat.window.typestr=='none':
+            self.weights=np.ones(12*nside**2)
         else:
             self.weights=cat.window.map.copy()
         if debug:
@@ -214,7 +218,9 @@ class Tracer(object) :
             plt.yscale('log')
             plt.xlabel(r'$l$')
             plt.ylabel(r'$C_{l}$')
-            plt.show() 
+            plt.show()
+            tab = astropy.table.Table([np.arange(len(cl)),cl],names=('l','Cl'))
+            tab.write('cl_anafast_%f.fits' %(np.average(zarr,weights=nzarr))) 
         #4- Generate NaMaster fields (passing contaminants if necessary)
         if templates is not None :
             self.field=nmt.NmtField(mask.total,[mp_delta],templates=templates)
@@ -462,6 +468,7 @@ def process_catalog(o) :
             else :
                 cl_bias=None
             cls_all[(b1,b2)]=compute_master(f1,f2,w,clb=cl_bias)[0]
+
         print 'Computed bin: ', b1, b2, ' in ', time()-t1, ' s'
         if debug:
             plt.figure()
@@ -489,7 +496,7 @@ def process_catalog(o) :
                 q1.append('P'); q2.append('P')
     sbin=sacc.Binning(typ,ell,t1,q1,t2,q2)
     ssbin=sacc.SACC(stracers,sbin)
-
+      
     #3- Arrange power spectra into SACC mean vector
     vec=np.zeros((ssbin.size(),))
     for t1i,t2i,ells,ndx in ssbin.sortTracers() :
