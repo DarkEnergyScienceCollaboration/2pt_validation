@@ -95,6 +95,7 @@ class Mask(object) :
         theta_apo : float
             Apodization scale in degrees
         """
+        print('Window type', cat.window.typestr)
         if cat.window.typestr=='decbcut':
             npix=hp.nside2npix(nside)
             ind_aux=np.arange(0,npix)
