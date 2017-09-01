@@ -11,7 +11,7 @@ import os
 from time import time
 from numpy.linalg import inv
 import astropy.table
-debug=True
+debug=False
 
 def initMPI(o):
     global comm, mrank, mranks, msize 
