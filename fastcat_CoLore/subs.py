@@ -31,7 +31,7 @@ def readColoreIni(fname):
                        y=y.split('"')[1]
                     except:
                        pass
-            elif y is str: 
+            elif type(y) is str: 
                 try:
                    y=y.split('"')[1]
                 except:
@@ -146,6 +146,7 @@ def process(o):
     addFields=[]
     for i,param_file in enumerate(o.ipath):
         flist,inif=readColore(param_file)
+        print flist
         dirname, _ = os.path.split(param_file)
         nzfile=inif['nz_filename']
         nzfile = os.path.join(dirname,nzfile)

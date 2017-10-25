@@ -24,7 +24,7 @@ def readColoreIni(fname):
                        y=y.split('"')[1]
                     except:
                        pass
-            elif y is str:
+            elif type(y) is str:
                 try:
                    y=y.split('"')[1]
                 except:
