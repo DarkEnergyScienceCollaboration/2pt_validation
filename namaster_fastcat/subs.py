@@ -120,7 +120,7 @@ class Mask(object) :
         #Final weights are a combination of mask + depth fluctuations
         self.total=self.mask_apo*self.weights
         #Can't generate maps with pixels larger than the mask
-        if (cat.window.typestr!='decbcut') and (cat.window.typestr!='base'):
+        if (cat.window.typestr!='decbcut') & (cat.window.typestr!='base'):
             if nside<cat.window.nside:
                 #If mask pixelization is higher, upgrade output maps
                 self.nside=cat.window.nside
