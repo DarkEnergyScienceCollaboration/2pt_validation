@@ -21,14 +21,17 @@ def readColoreIni(fname):
         if (i>0):
             line=line[:i]
         if "= " in line:
-            x,y=map(lambda x:x.strip(),line.split('= '))
+            x,y=map(lambda x:x.strip(),line.split('= ')) 
             # try guessing the type
             if "." in y:
                 try:
                     y=float(y)
                 except:
-                    pass
-            if (type(y)==str):
+                    try:
+                       y=y.split('"')[1]
+                    except:
+                       pass
+            elif y is str: 
                 try:
                    y=y.split('"')[1]
                 except:
