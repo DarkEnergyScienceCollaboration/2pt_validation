@@ -39,8 +39,6 @@ def main():
         help="Path to bias file")
     parser.add_option("--tracer-number",dest="sbin",default=4,type=int,
         help="Number of tracer to show")
-    parser.add_option("--fsky",dest="area",default=1.,type=float,
-        help="Fraction of the sky surveyed")
     (o, args) = parser.parse_args()
 
     colore_dict = readColoreIni(o.param_file)
@@ -84,8 +82,7 @@ def main():
         else:
             b1 = (binning_sacc.binning.binar['T1']==o.sbin) & (binning_sacc.binning.binar['T2']==o.sbin)
             xdata = binning_sacc.binning.binar['ls'][b1]
-            shot_noise = 4*np.pi*o.area/np.sum(tracers[o.sbin].Nz)
-            ydata = (binning_sacc.mean.vector[b1]-shot_noise)*xdata*(xdata+1)
+            ydata = (binning_sacc.mean.vector[b1])*xdata*(xdata+1)
             yth = csacc.mean.vector[b1]*xdata*(xdata+1)
             plt.plot(xdata,ydata,label='Data')
             plt.plot(xdata,yth,label='Theory')

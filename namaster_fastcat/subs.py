@@ -12,7 +12,7 @@ from time import time
 from numpy.linalg import inv
 import astropy.table
 debug=False
-
+test_photoz=False
 def initMPI(o):
     global comm, mrank, mranks, msize 
     
@@ -212,7 +212,7 @@ class Tracer(object) :
             plt.show()
             ma_delta = hp.ma(mp_delta)
             ma_delta.mask = np.logical_not(mask)
-            cl = hp.anafast(ma_delta.filled(), lmax=lmax)
+            cl = hp.anafast(ma_delta.filled(), lmax=int(lmax))
             plt.figure()
             plt.plot(np.arange(len(cl)),cl)
             plt.xscale('log')
@@ -256,7 +256,10 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
                 z0=z0_arr[ib]; zf=zf_arr[ib];
                 ids=np.where((zm<zf) & (zm>=z0))[0]
                 data_here=cat.data[ids]
-                zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
+                if test_photoz:
+                    zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
+                else:
+                    zarr,nzarr=cat.photoz.NofZ_true(data_here,zmin,zmax,dz)
                 ipix=hp.ang2pix(mask.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
                 mp_n=np.bincount(ipix,minlength=npix).astype(float)
                 nzarr_all_here[ib,:]+=nzarr
@@ -371,7 +374,7 @@ def compute_covariance(w,clpred,binning,t1,t2,t3,t4,nz1,nz2,nz3,nz4,tot_area,cw)
     t1t4 = np.logical_and(binning.binar['T1']==min(t1,t4),binning.binar['T2']==max(t4,t1))
     t2t3 = np.logical_and(binning.binar['T1']==min(t2,t3),binning.binar['T2']==max(t2,t3))
     t2t4 = np.logical_and(binning.binar['T1']==min(t2,t4),binning.binar['T2']==max(t4,t2))
-    print w.wsp.lmax, np.count_nonzero(t2t4), np.count_nonzero(t1t3), np.count_nonzero(t1t4), np.count_nonzero(t2t3), t1,t2,t3,t4
+
     if t1==t3:
         c13 = clpred[t1t3]+tot_area/(nz1*nz3)
     else:
@@ -498,11 +501,12 @@ def process_catalog(o) :
     sbin=sacc.Binning(typ,ell,t1,q1,t2,q2)
     ssbin=sacc.SACC(stracers,sbin)
       
-    #3- Arrange power spectra into SACC mean vector
+    #3- Arrange power spectra into SACC mean vector and subtract shot noise
     vec=np.zeros((ssbin.size(),))
     for t1i,t2i,ells,ndx in ssbin.sortTracers() :
         lmax=min(tracers[t1i].lmax,tracers[t2i].lmax)
-        vec[ndx]=cls_all[(t1i,t2i)][np.where(ell_eff<lmax)[0]]
+        shot_noise=tot_area/np.sqrt(np.sum(tracers[t1i].nzarr)*np.sum(tracers[t2i].nzarr))
+        vec[ndx]=cls_all[(t1i,t2i)][np.where(ell_eff<lmax)[0]]-shot_noise
     svec=sacc.MeanVec(vec)
     cw = nmt.covariance.NmtCovarianceWorkspace()
     cw.compute_coupling_coefficients(w,w)
