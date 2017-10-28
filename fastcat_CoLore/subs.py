@@ -212,7 +212,7 @@ def process(o):
                 if do_stars:
                     scat=stars.generateStarCatalog(o.Nstars/Nparts)
                     cataux.appendCatalog(scat)
-                print cataux.data
+                print 'Writing...', fname, type(fname) 
                 if (Nparts>0):
                     cataux.writeH5(fname, MPIComm=None,part=(i,Nparts))
                 else:
