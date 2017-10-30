@@ -145,8 +145,7 @@ def process(o):
     fopath=None
     addFields=[]
     for i,param_file in enumerate(o.ipath):
-        flist,inif=readColore(param_file)
-        print flist
+        flist,inif=readColore(param_file) 
         dirname, _ = os.path.split(param_file)
         nzfile=inif['nz_filename']
         nzfile = os.path.join(dirname,nzfile)
