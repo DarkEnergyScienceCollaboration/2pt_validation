@@ -59,7 +59,8 @@ def setupOptions():
                       help="Compute the theoretical covariance matrix using the predicted Cls")
     parser.add_option("--compute-theory",dest="compute_theory",default=False,action="store_true",
                       help="Compute the theoretical prediction for the power-spectra and use it for the covariances")
-
+    parser.add_option("--subtract-shot-noise",dest="sub_sn",default=False,action="store_true",
+                      help="Subtract shot-noise to NaMaster results, if not used the shot-noise will be saved in a file")
     (o, args) = parser.parse_args()
     return o,args
 
@@ -503,11 +504,20 @@ def process_catalog(o) :
       
     #3- Arrange power spectra into SACC mean vector and subtract shot noise
     vec=np.zeros((ssbin.size(),))
+    shot_noise = np.zeros((len(tracers),len(tracers)))
     for t1i,t2i,ells,ndx in ssbin.sortTracers() :
         lmax=min(tracers[t1i].lmax,tracers[t2i].lmax)
-        shot_noise=tot_area/np.sqrt(np.sum(tracers[t1i].nzarr)*np.sum(tracers[t2i].nzarr))
-        vec[ndx]=cls_all[(t1i,t2i)][np.where(ell_eff<lmax)[0]]-shot_noise
+        shot_noise[t1i,t2i]=tot_area/np.sqrt(np.sum(tracers[t1i].nzarr)*np.sum(tracers[t2i].nzarr))
+        shot_noise[t2i,t1i]=shot_noise[t1i,t2i]
+        if o.sub_sn:
+            aux=shot_noise[t1i,t2i]
+        else:
+            aux=0
+        vec[ndx]=cls_all[(t1i,t2i)][np.where(ell_eff<lmax)[0]]-aux
     svec=sacc.MeanVec(vec)
+    #If not subtracted, save shot-noise estimation in a binary file
+    if o.sub_sn==False:
+        np.save(o.fname_out+"shot_noise.npy",shot_noise)
     cw = nmt.covariance.NmtCovarianceWorkspace()
     cw.compute_coupling_coefficients(w,w)
     #4- Create SACC file and write to file
