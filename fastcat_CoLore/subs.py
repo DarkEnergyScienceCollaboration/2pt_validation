@@ -190,8 +190,7 @@ def process(o):
                      # this risks repetition, but OK
                      indices=np.random.randint(0,len(data),int(len(data)*o.ss_frac))
                      data=data[indices]
-                     print "Done"
-
+                     print "Done" 
                 cataux = fc.Catalog(len(data), dNdz=dNdz, bz=bz, meta=meta, addFields=np.unique(addFields).tolist())
                 cataux['ra']=data['RA']
                 cataux['dec']=data['DEC']
@@ -211,7 +210,7 @@ def process(o):
                 if do_stars:
                     scat=stars.generateStarCatalog(o.Nstars/Nparts)
                     cataux.appendCatalog(scat)
-                print 'Writing...', fname, type(fname) 
+                print 'Writing...', fname 
                 if (Nparts>0):
                     cataux.writeH5(fname, MPIComm=None,part=(i,Nparts))
                 else:
