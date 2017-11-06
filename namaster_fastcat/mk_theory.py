@@ -58,6 +58,7 @@ def main():
     if shear:
         a_grid=np.sqrt((ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)/ngrid)**2+rsm**2)
     else:
+        print('No shear applied')
         a_grid=np.sqrt((ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)/ngrid)**2*0.5+rsm**2)
 
     print("Grid smoothing : %.3lf Mpc/h"%a_grid)
