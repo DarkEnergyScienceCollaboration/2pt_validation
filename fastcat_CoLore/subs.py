@@ -192,7 +192,7 @@ def process(o):
                      data=data[indices]
                      print "Done"
 
-                cataux = fc.Catalog(len(data), dNdz=dNdz, bz=bz, meta=meta, addFields=np.unique(addFields))
+                cataux = fc.Catalog(len(data), dNdz=dNdz, bz=bz, meta=meta, addFields=np.unique(addFields).tolist())
                 cataux['ra']=data['RA']
                 cataux['dec']=data['DEC']
                 if (o.realspace):
