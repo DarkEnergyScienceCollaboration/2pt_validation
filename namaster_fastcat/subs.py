@@ -511,8 +511,8 @@ def process_catalog(o) :
         shot_noise[t2i,t1i]=shot_noise[t1i,t2i]
         if o.sub_sn:
             aux=shot_noise[t1i,t2i]
-        else:
-            aux=0
+        if o.sub_sn==False:
+            aux=0.
         vec[ndx]=cls_all[(t1i,t2i)][np.where(ell_eff<lmax)[0]]-aux
     svec=sacc.MeanVec(vec)
     #If not subtracted, save shot-noise estimation in a binary file
