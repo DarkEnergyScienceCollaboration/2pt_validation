@@ -39,6 +39,10 @@ def main():
         help="Path to bias file")
     parser.add_option("--tracer-number",dest="sbin",default=4,type=int,
         help="Number of tracer to show")
+    parser.add_option("--shot-noise-file",dest="fname_sn",default=None,
+        help="Path to shot-noise file")
+    parser.add_option("--include-rsd",dest="rsd",default=False,action="store_true",
+        help="Include RSD")
     (o, args) = parser.parse_args()
 
     colore_dict = readColoreIni(o.param_file)
@@ -69,7 +73,7 @@ def main():
     bias_tab = astropy.table.Table.read(o.fname_bias,format='ascii')
     tracers = binning_sacc.tracers
     print('Got ',len(tracers),' tracers')
-    cltracers=[ccl.ClTracer(cosmo,'nc',False,False,n=(t.z,t.Nz),bias=(bias_tab['col1'],bias_tab['col2']),r_smooth=a_grid) for t in tracers]
+    cltracers=[ccl.ClTracer(cosmo,'nc',has_rsd=o.rsd,has_magnification=False,n=(t.z,t.Nz),bias=(bias_tab['col1'],bias_tab['col2']),r_smooth=a_grid) for t in tracers]
     print('Cl tracers ready')
     theories = getTheories(cosmo,binning_sacc,cltracers)
     mean=getTheoryVec(binning_sacc,theories)
@@ -83,7 +87,12 @@ def main():
         else:
             b1 = (binning_sacc.binning.binar['T1']==o.sbin) & (binning_sacc.binning.binar['T2']==o.sbin)
             xdata = binning_sacc.binning.binar['ls'][b1]
-            ydata = (binning_sacc.mean.vector[b1])*xdata*(xdata+1)
+            if o.fname_sn is None:
+                ydata = (binning_sacc.mean.vector[b1])*xdata*(xdata+1)
+            else:
+                sn_arr = np.load(o.fname_sn)
+                sn = sn_arr[o.sbin,o.sbin]
+                ydata = (binning_sacc.mean.vector[b1]-sn)*xdata*(xdata+1)
             yth = csacc.mean.vector[b1]*xdata*(xdata+1)
             plt.plot(xdata,ydata,label='Data')
             plt.plot(xdata,yth,label='Theory')
