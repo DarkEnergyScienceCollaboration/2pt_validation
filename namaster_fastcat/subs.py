@@ -230,7 +230,7 @@ class Tracer(object) :
             self.field=nmt.NmtField(mask.total,[mp_delta])
          
 #Returns map and N(z)
-def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_sampling=-1,fac_neglect=1E-5) :
+def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=4096,dz_sampling=-1,fac_neglect=1E-5) :
 
     nbins=len(z0_arr)
 

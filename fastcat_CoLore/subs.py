@@ -210,7 +210,7 @@ def process(o):
                 if do_stars:
                     scat=stars.generateStarCatalog(o.Nstars/Nparts)
                     cataux.appendCatalog(scat)
-                print 'Writing...', fname 
+                print 'Writing...', fname, ' with %d sources' %(len(cataux['z'])) 
                 if (Nparts>0):
                     cataux.writeH5(fname, MPIComm=None,part=(i,Nparts))
                 else:

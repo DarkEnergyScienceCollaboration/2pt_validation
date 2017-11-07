@@ -31,9 +31,9 @@ def main():
         help="Show plot comparing data and theory")
     parser.add_option('--param-file',dest="param_file",default=None,
         help="Path to CoLoRe param file")
-    parser.add_option('--power-spectrum-type',dest="pk",default='linear',type=str,
-        help="Power spectrum type: [`linear`,`non-linear`]")
-    parser.add_option('--transfer-function',dest="tf",default='eisenstein_hu',type=str,
+    parser.add_option('--power-spectrum-type',dest="pk",default='halofit',type=str,
+        help="Power spectrum type: [`linear`,`halofit`]")
+    parser.add_option('--transfer-function',dest="tf",default='boltzmann',type=str,
         help="Type of transfer function: [`eisenstein_hu`,`bbks`,`boltzmann`,`halofit`]")
     parser.add_option("--bias-file",dest="fname_bias",default=None,
         help="Path to bias file")
@@ -57,7 +57,7 @@ def main():
     #Compute grid scale
     zmax = colore_dict['z_max']
     ngrid = int(colore_dict['n_grid'])
-    rsm = colore_dict['r_smooth']
+    rsm = colore_dict['r_smooth']/hhub
     shear= colore_dict['include_shear']=='true'
     if shear:
         a_grid=np.sqrt((ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)/ngrid)**2+rsm**2)
@@ -85,6 +85,8 @@ def main():
         if o.sbin > len(tracers):
             print('The bin number cannot be higher than the number of tracers')
         else:
+            print('Bin', o.sbin)
+            plt.plot(tracers[o.sbin].z,tracers[o.sbin].Nz/np.sum(tracers[o.sbin].Nz))
             b1 = (binning_sacc.binning.binar['T1']==o.sbin) & (binning_sacc.binning.binar['T2']==o.sbin)
             xdata = binning_sacc.binning.binar['ls'][b1]
             if o.fname_sn is None:
@@ -93,7 +95,11 @@ def main():
                 sn_arr = np.load(o.fname_sn)
                 sn = sn_arr[o.sbin,o.sbin]
                 ydata = (binning_sacc.mean.vector[b1]-sn)*xdata*(xdata+1)
-            yth = csacc.mean.vector[b1]*xdata*(xdata+1)
+            b2 = (csacc.binning.binar['T1']==o.sbin) & (csacc.binning.binar['T2']==o.sbin)
+            xth = csacc.binning.binar['ls'][b2]
+            yth = csacc.mean.vector[b2]*xth*(xth+1)
+            plt.show()
+            plt.figure()
             plt.plot(xdata,ydata,label='Data')
             plt.plot(xdata,yth,label='Theory')
             plt.xlabel('$l$')
