@@ -1,0 +1,130 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{fullpage}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+\newcommand{\nv}{\hat{\bf n}}
+\newcommand{\disp}{\boldsymbol{\Psi}}
+\newcommand{\TODO}[1]{{\bf TODO: #1}}
+
+%opening
+\title{Tracking the field transformations imposed by CoLoRe}
+\author{David Alonso}
+
+\begin{document}
+
+\maketitle
+
+\section{Density field}
+Generating a galaxy catalog takes place in 4 steps:
+\begin{enumerate}
+  \item The code first generates a Gaussian realization of the density field at $z=0$, $\delta_G({\bf x},z=0)$ in a box of size:
+    \begin{equation}
+      L_{\rm box}=2\chi(z_{\rm max})\left(1+\frac{2}{N_g}\right),
+    \end{equation}
+    where $N_g$ is the number of cells per dimension (we basically add an extra layer of cells for safety beyond $z_{\rm max}$).
+  \item This Gaussian density field is generated from a smoothed power spectrum:
+    \begin{equation}
+      P_G({\bf k})=P_L({\bf k})W^2_{\rm sm}(k),
+    \end{equation}
+    where $W_{\rm sm}(k)=\exp[-(kR_{\rm sm})^2/2]$ and $R_{\rm sm}$ is the smoothing scale used by the code. The density field is further smoothed by the effect of the finite grid. This can be encapsulated through an additional window function $W_{\rm g}({\bf k})$ (we'll see this later).
+  \item The Gaussian density field is transformed into a physical one ($\delta_{\rm ph}>-1$) with mean zero. This is done through the lognormal transformation (but also through LPT or clipping). The density field is also generated in the lightcone (i.e. it will evolve the field to the redshift corresponding to the position of each cell).
+  \item In each cell, the code generates $N$ galaxies, where:
+    \begin{equation}
+      N({\bf x})=\bar{N}\frac{B\left(1+\delta_{\rm ph}({\bf x})\right)}{\left\langle B\left(1+\delta_{\rm ph}({\bf x})\right)\right\rangle},
+    \end{equation}
+    where $B$ is a given biasing model.
+\end{enumerate}
+In the simplest scenario, we have:
+\begin{align}
+  &\delta_{\rm ph}({\bf x},z)=\exp\left[D(z)\left(\delta_G({\bf x},0)-D(z)\sigma_G^2/2\right)\right]-1,\\
+  &B(1+\delta)=(1+\delta)^b.
+\end{align}
+In this case, the transformation is lognormal all the way to $N({\bf x})$.
+
+Now, the main point here is dealing with $W_g$. In principle the density field is generated in Fourier space in the discrete Fourier modes covered by the box: $k_x=n_x\,2\pi/L_{\rm box}$ (and the same for $y$ and $z$), where $n_x=-N_g/2+1,-N_g/2+2,...,N_g/2$, so there are several options:
+\begin{itemize}
+ \item A top-hat box in Fourier space
+   \begin{equation}
+     W_g({\bf k})=\left\{
+     \begin{array}{c}
+       1\hspace{6pt}{\rm if}\hspace{6pt}k_i<k_{\rm max}\\
+       0\hspace{6pt}{\rm otherwise}
+     \end{array}\right.
+   \end{equation}
+ \item Model it as the window function associated to the 3D cells in real space:
+   \begin{equation}
+     W_g({\bf k})=\frac{\sin(k_x\,l/2)}{k_x\,l/2}\,\frac{\sin(k_y\,l/2)}{k_y\,l/2}\,\frac{\sin(k_z\,l/2)}{k_z\,l/2},
+   \end{equation}
+   where $l=L_{\rm box}/N_g$ is the cell size.
+ \item A simplified version of the above based on Taylor-expanding it around ${\bf k}=0$:
+   \begin{align}
+     W_g({\bf k})\simeq1-\frac{k^2\,l^2}{6}\simeq\exp\left[-\left(kl/\sqrt{12}\right)^2/2\right]
+   \end{align}
+\end{itemize}
+If we go with the last option, the theory predictions should just use a smoothing scale $R'_{\rm sm}=\sqrt{R_{\rm sm}^2+l^2/12}$.
+
+
+
+  
+\end{document}
+
+\section{Full-sky expressions}
+The angular power spectrum between two contributions is:
+\begin{equation}
+ C^{ij}_\ell=4\pi\int_0^\infty \frac{dk}{k}\,\mathcal{P}_\Phi(k)\Delta^i_\ell(k)\Delta^j_\ell(k).
+\end{equation}
+The expressions for density, RSD, magnification, lensing convergence and CMB lensing are:
+\begin{align}
+  &\Delta_\ell^D(k)=\int dz p_z(z) b(z) T_\delta(k,z) j_\ell(k\chi(z))\\
+  &\Delta_\ell^{RSD}(k)=\int dz \frac{(1+z) p_z(z)}{H(z)}T_\theta(k,z) j_\ell''(k\chi(z))\\
+  &\Delta_\ell^M(k)=-\ell(\ell+1)\int \frac{dz}{H(z)} W^M(z) T_{\phi+\psi}(k,z) j_\ell(k\chi(z)), \\ 
+  &\Delta_\ell^L(k)=-\frac{\ell(\ell+1)}{2}\int \frac{dz}{H(z)} W^L(z) T_{\phi+\psi}(k,z) j_\ell(k\chi(z)),  \\
+  &\Delta_\ell^C(k)=\frac{\ell(\ell+1)}{2}\int_0^{\chi_*}d\chi
+  \frac{\chi_*-\chi}{\chi\chi_*} T_{\phi+\psi}(k,z) j_\ell(k\chi),  
+\end{align}
+where
+\begin{align}
+ &W^M(z)\equiv\int_z^\infty dz' p_z(z')\frac{2-5s(z')}{2}\frac{\chi(z')-\chi(z)}{\chi(z')}\\
+ &W^L(z)\equiv\int_z^\infty dz' p_z(z')\frac{\chi(z')-\chi(z)}{\chi(z')}
+\end{align}
+
+\section{Limber approximation}
+The Limber approximation is
+\begin{equation}
+ j_\ell(x)\simeq\sqrt{\frac{\pi}{2\ell+1}}\,\delta\left(\ell+\frac{1}{2}-x\right).
+\end{equation}
+Thus for each $k$ and $\ell$ we can define a radial distance $\chi_\ell\equiv(\ell+1/2)/k$
+
+
+\section{Expressions in the Limber approximation}
+The expressions above can be written as follows in the Limber approximation. First, the power spectrum
+can be rewritten as
+\begin{equation}
+ C^{ij}_\ell=\frac{2}{2\ell+1}\int_0^\infty dk\,P_\delta\left(k,z=0\right)
+ \tilde{\Delta}^i_\ell(k)\tilde{\Delta}^j_\ell(k).
+\end{equation}
+where
+\begin{align}
+ &\tilde{\Delta}_\ell^D(k)=p_z(\chi_\ell)\,b(\chi_\ell)\,D(\chi_\ell)\,H(\chi_\ell)\\
+ &\tilde{\Delta}_\ell^{RSD}(k)=
+ \frac{1+8\ell}{(2\ell+1)^2}\,p_z(\chi_\ell)\,f(\chi_\ell)\,D(\chi_\ell)\,H(\chi_\ell)
+ -\frac{4}{2\ell+3}\sqrt{\frac{2\ell+1}{2\ell+3}}p_z(\chi_{\ell+1})\,f(\chi_{\ell+1})\,D(\chi_{\ell+1})\,H(\chi_{\ell+1})
+\longrightarrow0\\
+ &\tilde{\Delta}^{ISW}_\ell(k)=
+ \frac{3\Omega_{M,0}H_0^2}{k^2}H(\chi_\ell)g(\chi_\ell)\left[1-f(\chi_\ell)\right]\\
+ &\tilde{\Delta}_\ell^M(k)=3\Omega_{M,0}H_0^2\frac{\ell(\ell+1)}{k^2}\,
+ \frac{D(\chi_\ell)}{a(\chi_\ell)\chi_\ell}W^M(\chi_\ell)\longrightarrow
+ 3\Omega_{M,0}H_0^2\,\frac{\chi_\ell D(\chi_\ell)}{a(\chi_\ell)}W^M(\chi_\ell)\\
+ &\tilde{\Delta}_\ell^L(k)=\frac{3}{2}\Omega_{M,0}H_0^2\sqrt{\frac{(\ell+2)!}{(\ell-2)}}\frac{1}{k^2}\,
+ \frac{D(\chi_\ell)}{a(\chi_\ell)\chi_\ell}W^M(\chi_\ell)\longrightarrow
+ \frac{3}{2}\Omega_{M,0}H_0^2\,\frac{\chi_\ell D(\chi_\ell)}{a(\chi_\ell)}W^M(\chi_\ell)\\
+ &\tilde{\Delta}_\ell^C(k)=\frac{3}{2}\Omega_{M,0}H_0^2\frac{\ell(\ell+1)}{k^2}\,
+ \frac{D(\chi_\ell)}{a(\chi_\ell)\chi_\ell}\frac{\chi_*-\chi_\ell}{\chi_*}\Theta(\chi_\ell-\chi_*)\longrightarrow
+ \frac{3}{2}\Omega_{M,0}H_0^2\,\frac{\chi_\ell D(\chi_\ell)}{a(\chi_\ell)}\frac{\chi_*-\chi_\ell}{\chi_*}\Theta(\chi_\ell-\chi_*)
+\end{align}
+
+
+
+
