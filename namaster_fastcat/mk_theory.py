@@ -57,15 +57,16 @@ def main():
     #Compute grid scale
     zmax = colore_dict['z_max']
     ngrid = int(colore_dict['n_grid'])
-    rsm = colore_dict['r_smooth']/hhub
+    rsm = colore_dict['r_smooth']/hhub 
     shear= colore_dict['include_shear']=='true'
+    Lbox = 2*ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)
     if shear:
-        a_grid=np.sqrt((ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)/ngrid)**2+rsm**2)
+        a_grid=Lbox/ngrid
     else:
         print('No shear applied')
-        a_grid=np.sqrt((ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)/ngrid)**2*0.5+rsm**2)
-
-    print("Grid smoothing : %.3lf Mpc/h"%a_grid)
+        a_grid=0.5*Lbox/ngrid
+    rsm_tot = np.sqrt(rsm**2+a_grid**2/12) 
+    print("Grid smoothing : %.3lf Mpc/h"%(rsm_tot*hhub))
     print('Reading SACC file')
     #SACC File with the N(z) to analyze
     binning_sacc = sacc.SACC.loadFromHDF(o.fname_in)
@@ -73,7 +74,7 @@ def main():
     bias_tab = astropy.table.Table.read(o.fname_bias,format='ascii')
     tracers = binning_sacc.tracers
     print('Got ',len(tracers),' tracers')
-    cltracers=[ccl.ClTracer(cosmo,'nc',has_rsd=o.rsd,has_magnification=False,n=(t.z,t.Nz),bias=(bias_tab['col1'],bias_tab['col2']),r_smooth=a_grid) for t in tracers]
+    cltracers=[ccl.ClTracer(cosmo,'nc',has_rsd=o.rsd,has_magnification=False,n=(t.z,t.Nz),bias=(bias_tab['col1'],bias_tab['col2']),r_smooth=rsm_tot) for t in tracers]
     print('Cl tracers ready')
     theories = getTheories(cosmo,binning_sacc,cltracers)
     mean=getTheoryVec(binning_sacc,theories)
