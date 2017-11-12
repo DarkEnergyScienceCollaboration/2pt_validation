@@ -61,6 +61,7 @@ To generate the catalogs you have to do the following:
 * The option `--pz_sigma` selects the width of the Gaussian in case of choosing a Gaussian photo-z.
 * The option `--oextra` adds extra information to the output directory (you should put the name or number of the realization that you are considering).
 * The option `--mpi` enables MPI parallel processing.
+* The option `--wf_type` specifies the type of angular mask. If not specified  it uses the default which contains the depth variations expected using the LSST dithering strategy in Awan et al. You can also select: `none`, which corresponds to full sky survey or `radecbcut` which is just a simple masking of the galactic plane and part of the northern hemisphere.
 * Once you modified `run_all.sh` just do `sbatch run_all.sh` to submit your job.
 
 As you can see, what `run_all.sh` does is just to submit the slurm job by calling the python script `mkcat.py` which is the interface with fastcat.
@@ -89,12 +90,15 @@ The outputs from this step can be found at `/global/cscratch1/sd/jsanch87/2pt_na
 
 ## Step 4) Compute the theoretical prediction (Optional)
 
-If you want you can compute the theoretical prediction for the sample SACC file just typing `python mk_theory.py` in the directory `namaster_fastcat`. You can modify the relevant paths in the file if you want to calculate the theoretical prediction for the power-spectra for other cases.
-
+If you want you can compute the theoretical prediction for the sample SACC file just typing `python mk_theory.py` in the directory `namaster_fastcat`. You have to pass the arguments:
+* `-i`, this is the path to the input SACC file containing the N(z) and tracers that you want to use for your theoretical predictions.
+* `--param-file`, this is the CoLoRe param file that you used to generate the catalog (and contains the values for the cosmological parameters of the prediction you want to compute).
+* `-o`, path to output SACC file containing the theoretical prediction.
+* `--bias`, path to file containing the bias of the tracers to analyze.
+* `--shot-noise`, path to file containing the estimation of the shot-noise (this is optional, if not specified it remains unsubtracted).
 To account for the different interpolation/gridding operations that take place within CoLoRe, the P(k) used to compute the theoretical predictions should be smoothed with a Gaussian radius given by:
-  R_smooth = (R_s^2 + (0.5*a_grid)^2)^1/2
+  R_smooth = (R_s^2 + (0.5*a_grid)^2/12)^1/2
 where R_s is the smoothing scale parmeter passed to CoLoRe and a_grid is the grid size (this is reported by CoLoRe, and can be computed as 2*chi(z_max)*(1+2/Ngrid)/Ngrid, where Ngrid is the number of grid cells per dimension and chi(z) is the radial comoving distance to redshift z.
-
 
 ### Final notes and disclaimer
 
