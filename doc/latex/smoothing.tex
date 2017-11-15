@@ -60,7 +60,7 @@ Now, the main point here is dealing with $W_g$. In principle the density field i
    where $l=L_{\rm box}/N_g$ is the cell size.
  \item A simplified version of the above based on Taylor-expanding it around ${\bf k}=0$:
    \begin{align}
-     W_g({\bf k})\simeq1-\frac{k^2\,l^2}{6}\simeq\exp\left[-\left(kl/\sqrt{12}\right)^2/2\right]
+     W_g({\bf k})\simeq1-\frac{k^2\,l^2}{24}\simeq\exp\left[-\frac{1}{2}\left(\frac{kl}{\sqrt{12}}\right)^2\right]
    \end{align}
 \end{itemize}
 If we go with the last option, the theory predictions should just use a smoothing scale $R'_{\rm sm}=\sqrt{R_{\rm sm}^2+l^2/12}$.
@@ -69,62 +69,3 @@ If we go with the last option, the theory predictions should just use a smoothin
 
   
 \end{document}
-
-\section{Full-sky expressions}
-The angular power spectrum between two contributions is:
-\begin{equation}
- C^{ij}_\ell=4\pi\int_0^\infty \frac{dk}{k}\,\mathcal{P}_\Phi(k)\Delta^i_\ell(k)\Delta^j_\ell(k).
-\end{equation}
-The expressions for density, RSD, magnification, lensing convergence and CMB lensing are:
-\begin{align}
-  &\Delta_\ell^D(k)=\int dz p_z(z) b(z) T_\delta(k,z) j_\ell(k\chi(z))\\
-  &\Delta_\ell^{RSD}(k)=\int dz \frac{(1+z) p_z(z)}{H(z)}T_\theta(k,z) j_\ell''(k\chi(z))\\
-  &\Delta_\ell^M(k)=-\ell(\ell+1)\int \frac{dz}{H(z)} W^M(z) T_{\phi+\psi}(k,z) j_\ell(k\chi(z)), \\ 
-  &\Delta_\ell^L(k)=-\frac{\ell(\ell+1)}{2}\int \frac{dz}{H(z)} W^L(z) T_{\phi+\psi}(k,z) j_\ell(k\chi(z)),  \\
-  &\Delta_\ell^C(k)=\frac{\ell(\ell+1)}{2}\int_0^{\chi_*}d\chi
-  \frac{\chi_*-\chi}{\chi\chi_*} T_{\phi+\psi}(k,z) j_\ell(k\chi),  
-\end{align}
-where
-\begin{align}
- &W^M(z)\equiv\int_z^\infty dz' p_z(z')\frac{2-5s(z')}{2}\frac{\chi(z')-\chi(z)}{\chi(z')}\\
- &W^L(z)\equiv\int_z^\infty dz' p_z(z')\frac{\chi(z')-\chi(z)}{\chi(z')}
-\end{align}
-
-\section{Limber approximation}
-The Limber approximation is
-\begin{equation}
- j_\ell(x)\simeq\sqrt{\frac{\pi}{2\ell+1}}\,\delta\left(\ell+\frac{1}{2}-x\right).
-\end{equation}
-Thus for each $k$ and $\ell$ we can define a radial distance $\chi_\ell\equiv(\ell+1/2)/k$
-
-
-\section{Expressions in the Limber approximation}
-The expressions above can be written as follows in the Limber approximation. First, the power spectrum
-can be rewritten as
-\begin{equation}
- C^{ij}_\ell=\frac{2}{2\ell+1}\int_0^\infty dk\,P_\delta\left(k,z=0\right)
- \tilde{\Delta}^i_\ell(k)\tilde{\Delta}^j_\ell(k).
-\end{equation}
-where
-\begin{align}
- &\tilde{\Delta}_\ell^D(k)=p_z(\chi_\ell)\,b(\chi_\ell)\,D(\chi_\ell)\,H(\chi_\ell)\\
- &\tilde{\Delta}_\ell^{RSD}(k)=
- \frac{1+8\ell}{(2\ell+1)^2}\,p_z(\chi_\ell)\,f(\chi_\ell)\,D(\chi_\ell)\,H(\chi_\ell)
- -\frac{4}{2\ell+3}\sqrt{\frac{2\ell+1}{2\ell+3}}p_z(\chi_{\ell+1})\,f(\chi_{\ell+1})\,D(\chi_{\ell+1})\,H(\chi_{\ell+1})
-\longrightarrow0\\
- &\tilde{\Delta}^{ISW}_\ell(k)=
- \frac{3\Omega_{M,0}H_0^2}{k^2}H(\chi_\ell)g(\chi_\ell)\left[1-f(\chi_\ell)\right]\\
- &\tilde{\Delta}_\ell^M(k)=3\Omega_{M,0}H_0^2\frac{\ell(\ell+1)}{k^2}\,
- \frac{D(\chi_\ell)}{a(\chi_\ell)\chi_\ell}W^M(\chi_\ell)\longrightarrow
- 3\Omega_{M,0}H_0^2\,\frac{\chi_\ell D(\chi_\ell)}{a(\chi_\ell)}W^M(\chi_\ell)\\
- &\tilde{\Delta}_\ell^L(k)=\frac{3}{2}\Omega_{M,0}H_0^2\sqrt{\frac{(\ell+2)!}{(\ell-2)}}\frac{1}{k^2}\,
- \frac{D(\chi_\ell)}{a(\chi_\ell)\chi_\ell}W^M(\chi_\ell)\longrightarrow
- \frac{3}{2}\Omega_{M,0}H_0^2\,\frac{\chi_\ell D(\chi_\ell)}{a(\chi_\ell)}W^M(\chi_\ell)\\
- &\tilde{\Delta}_\ell^C(k)=\frac{3}{2}\Omega_{M,0}H_0^2\frac{\ell(\ell+1)}{k^2}\,
- \frac{D(\chi_\ell)}{a(\chi_\ell)\chi_\ell}\frac{\chi_*-\chi_\ell}{\chi_*}\Theta(\chi_\ell-\chi_*)\longrightarrow
- \frac{3}{2}\Omega_{M,0}H_0^2\,\frac{\chi_\ell D(\chi_\ell)}{a(\chi_\ell)}\frac{\chi_*-\chi_\ell}{\chi_*}\Theta(\chi_\ell-\chi_*)
-\end{align}
-
-
-
-
