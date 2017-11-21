@@ -1,12 +1,14 @@
 \documentclass[12pt]{article}
-
+\usepackage{amsmath}
 \newcommand{\colore}{\texttt{CoLoRe}}
 \newcommand{\vx}{\textbf{x}}
 \newcommand{\vk}{\textbf{k}}
-
+\newcommand{\cp}{{\rm clipped}}
+\newcommand{\erf}{{\rm erf}}
 \begin{document}
-\title{Power spectrum of log-normal transformed fields in
-  redshift-space}
+\title{Power spectrum of log-normal transformed or clipped fields in
+  redshift-space} 
+
 \author{A Slosar}
 \maketitle
 
@@ -19,13 +21,33 @@ The log-normal transformation that \colore\ does is to
   \begin{equation}
     \rho_{\ln}(\vx) = \exp\left[b\delta(\vx)\right]
   \end{equation}
+or
+\begin{equation}
+    \rho_{\cp}(\vx) = 
+  \begin{cases}
+    1+b\delta(\vx) & \text{if } b\delta(\vx)>-1 \\
+    0 & \text{otherwise}
+  \end{cases}
+\end{equation}
+
+
+
 \item Move galaxies around based on linear velocities.
 \end{enumerate}
 
+Probability of $\delta$ is given by 
+\begin{equation}
+  P(\delta) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left[-\frac{\delta^2}{2\sigma^2} \right]
+\end{equation}
 The mean density of the transformed fied is given by
 \begin{equation}
-  \bar{\rho}_{\ln} = \int \frac{1}{\sqrt{2\pi\sigma^2}}e^{b\delta -
-    \frac{\delta^2}{2\sigma^2}} d \delta= \exp{\frac{\sigma^2b^2}{2}},
+  \bar{\rho}_{\ln} = \int  \exp\left[b\delta(\vx)\right]  P(\delta) d \delta= \exp{\frac{\sigma^2b^2}{2}},
+\end{equation}
+or
+\begin{equation}
+  \bar{\rho}_{\cp} = \int_{-b^{-1}}^{\infty} (1+b\delta) P(\delta) =
+  \frac{1}{2} \left[1+ \erf\left(\frac{1}{\sqrt{2}b\sigma} \right) +
+    \sqrt{2}b\sigma\pi^{-1/2} e^{(2b^2\sigma^2)^{-1}} \right]
 \end{equation}
 where $\sigma^2$ is the field variance (that is why smoothing
 matters!) and the transformed overdensity is given by 
@@ -38,9 +60,10 @@ matters!) and the transformed overdensity is given by
 Based on this prescription, the transformed field in redshift-space
 is, on large scales
 \begin{equation}
-  \delta_{\ln,s}(\vk) = \delta_{\ln}(\vk) + \beta \delta (\vk) \mu^2,
+  \delta_{\ln,s}(\vk) = \delta_{\ln}(\vk) + \delta (\vk) f\mu^2,
 \end{equation}
-where $\beta=f/b$ is the usual Kaiser RSD distortion parameter. Note
+where $f=d \ln g / d \ln a$ is the logarithmic growth. Situation for
+clipping is identical. Note
 that the second $\delta$ multiplying Kaiser term is linear. This
 might seem a bit counter-intuitive, but can be shown to be using
 peak-background split argument. It also likely breaks down an smaller
@@ -48,7 +71,7 @@ scales, but this is not crucial for us.
 
 We have that the auto power-spectrum is given by 
 \begin{equation}
-  P_s(\vk) = P_{\ln\ln}(\vk) + 2P_{\ln L}\beta (\vk)\mu^2 + \beta^2 P_{LL}(\vk)\mu^4
+  P_s(\vk) = P_{\ln\ln}(\vk) + 2P_{\ln L} (\vk)f\mu^2 +  P_{LL}(\vk)f^2\mu^4
 \end{equation}
 
 Missing terms can be calculated via Fourier transform of the
@@ -66,6 +89,14 @@ Doing the math, one gets, see the maple script \texttt{lntrans.mw}:
   \xi_{\ln L} (r) &=& b\xi(r)\\
   \xi_{\ln \ln} (r) &=& e^{b^2 \xi(r)}-1
 \end{eqnarray}
+for lognormal and 
+
+\begin{eqnarray}
+  \xi_{\cp, L} (r) &=& \frac{C}{C+\sqrt{2}b\sigma e^{(2b^2\sigma^2)^{-1}}}b\xi\\
+  \xi_{\cp, \cp} (r) &=& \mbox{maple doesn't do the integral}, \\
+  C &=& \sqrt{\pi}\left(1+{\rm erf\left((\sqrt{2}b\sigma)^{-1}\right) \right) 
+\end{eqnarray}
+
 So, to make these predictions, one needs to logFFT to $\xi$, apply the
 above transforms and logFFT back. Interesting the $L \ln$ terms
 behaves exactly as if no transformation was done!
