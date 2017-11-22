@@ -230,10 +230,13 @@ class Tracer(object) :
             self.field=nmt.NmtField(mask.total,[mp_delta])
          
 #Returns map and N(z)
-def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_sampling=-1,fac_neglect=1E-5) :
-
-    nbins=len(z0_arr)
-
+def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_sampling=-1,fac_neglect=1E-5) : 
+    try:
+        nbins=len(z0_arr)
+    except:
+        z0_arr = [z0_arr]
+        zf_arr = [zf_arr]
+        nbins=len(z0_arr)
     #Get N(z) as stacked pdfs
     if n_sampling==None :
         dz=dz_sampling
@@ -257,10 +260,10 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
                 z0=z0_arr[ib]; zf=zf_arr[ib];
                 ids=np.where((zm<zf) & (zm>=z0))[0]
                 data_here=cat.data[ids]
-                if test_photoz:
-                    zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
-                else:
+                try:
                     zarr,nzarr=cat.photoz.NofZ_true(data_here,zmin,zmax,dz)
+                except:
+                    zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
                 ipix=hp.ang2pix(mask.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
                 mp_n=np.bincount(ipix,minlength=npix).astype(float)
                 nzarr_all_here[ib,:]+=nzarr
@@ -399,8 +402,10 @@ def process_catalog(o) :
     #Read z-binning
     print "Bins"
     z0_bins,zf_bins,lmax_bins=np.loadtxt(o.fname_bins_z,unpack=True)
-    nbins=len(z0_bins)
-
+    try:
+        nbins=len(z0_bins)
+    except:
+        nbins=1
 
     cat=fc.Catalog(read_from=o.fname_in)
     
@@ -430,7 +435,11 @@ def process_catalog(o) :
     zs,nzs,mps=bin_catalog(cat,z0_bins,zf_bins,mask)
     if mrank!=0 :
         return
-
+    #Make sure that we have an iterable
+    try:
+        len(lmax_bins)
+    except:
+        lmax_bins=[lmax_bins]
     for zar,nzar,mp,lmax in zip(zs,nzs,mps,lmax_bins):
         zav = np.average(zar,weights=nzar)
         print "-- z-bin: %3.2f "%zav
@@ -483,6 +492,7 @@ def process_catalog(o) :
             plt.xlabel(r'$l$')
             plt.ylabel(r'$C_{l}$')
             plt.show()
+  
     print "Translating into SACC"
     #Transform everything into SACC format
     #1- Generate SACC tracers
