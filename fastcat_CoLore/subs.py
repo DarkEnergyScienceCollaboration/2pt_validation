@@ -21,14 +21,17 @@ def readColoreIni(fname):
         if (i>0):
             line=line[:i]
         if "= " in line:
-            x,y=map(lambda x:x.strip(),line.split('= '))
+            x,y=map(lambda x:x.strip(),line.split('= ')) 
             # try guessing the type
             if "." in y:
                 try:
                     y=float(y)
                 except:
-                    pass
-            if (type(y)==str):
+                    try:
+                       y=y.split('"')[1]
+                    except:
+                       pass
+            elif type(y) is str: 
                 try:
                    y=y.split('"')[1]
                 except:
@@ -140,8 +143,9 @@ def process(o):
     do_stars = (stars is not None)
     time0 = datetime.datetime.now()
     fopath=None
+    addFields=[]
     for i,param_file in enumerate(o.ipath):
-        flist,inif=readColore(param_file)
+        flist,inif=readColore(param_file) 
         dirname, _ = os.path.split(param_file)
         nzfile=inif['nz_filename']
         nzfile = os.path.join(dirname,nzfile)
@@ -156,8 +160,8 @@ def process(o):
         meta['timestamp']=str(datetime.datetime.now())
         meta['realspace']=o.realspace
         meta['command_line']=' '.join(sys.argv)
-        if (o.ztrue):
-            fields.append('z_true')
+        if o.ztrue:
+            addFields.append('z_true')
         ## create window 
         wfunc=fc.window.getWindowFunc(o)
         ## next create photoz
@@ -177,7 +181,7 @@ def process(o):
             if i%msize==mrank:
                 print mranks, "Reading set ",i
                 da=h5py.File(filename)
-                data = da['sources0'].value 
+                data = da['sources1'].value 
                 print "     ... reading : ",filename, ' with ', len(data), 'sources'
                 if (o.ss_frac>=0):
                      print "Subsampling to ",o.ss_frac
@@ -186,9 +190,8 @@ def process(o):
                      # this risks repetition, but OK
                      indices=np.random.randint(0,len(data),int(len(data)*o.ss_frac))
                      data=data[indices]
-                     print "Done"
-
-                cataux = fc.Catalog(len(data), dNdz=dNdz, bz=bz, meta=meta)
+                     print "Done" 
+                cataux = fc.Catalog(len(data), dNdz=dNdz, bz=bz, meta=meta, addFields=np.unique(addFields).tolist())
                 cataux['ra']=data['RA']
                 cataux['dec']=data['DEC']
                 if (o.realspace):
@@ -207,7 +210,7 @@ def process(o):
                 if do_stars:
                     scat=stars.generateStarCatalog(o.Nstars/Nparts)
                     cataux.appendCatalog(scat)
-                print cataux.data
+                print 'Writing...', fname, ' with %d sources' %(len(cataux['z'])) 
                 if (Nparts>0):
                     cataux.writeH5(fname, MPIComm=None,part=(i,Nparts))
                 else:
