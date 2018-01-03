@@ -10,11 +10,16 @@ from subs_theory import *
 
 def getTheories(ccl_cosmo,s,ctracers) :
     theo={}
+    w={}
+    theta = np.logspace(-2,1,50)
     for t1i,t2i,ells,_ in s.sortTracers():
         cls=ccl.angular_cl(ccl_cosmo,ctracers[t1i],ctracers[t2i],ells)
+        #ws=ccl.correlation(ccl_cosmo,ells,cls,theta,corr_type='GG',method='FFTLog')
         theo[(t1i,t2i)]=cls
         theo[(t2i,t1i)]=cls
-    return theo
+        #w[(t2i,t1i)]=ws
+        #w[(t1i,t2i)]=ws
+    return theo#,w
 
 def getTheoryVec(s, cls_theory):
     vec=np.zeros((s.size(),))
@@ -43,6 +48,8 @@ def main():
         help="Path to shot-noise file")
     parser.add_option("--include-rsd",dest="rsd",default=False,action="store_true",
         help="Include RSD")
+    parser.add_option("--write-wtheta",dest="write_w",default=False,action="store_true",
+        help="Include this flag to write the correlation function")
     (o, args) = parser.parse_args()
 
     colore_dict = readColoreIni(o.param_file)
@@ -64,7 +71,7 @@ def main():
         a_grid=Lbox/ngrid
     else:
         print('No shear applied')
-        a_grid=0.5*Lbox/ngrid
+        a_grid=Lbox/ngrid
     rsm_tot = np.sqrt(rsm**2+a_grid**2/12) 
     print("Grid smoothing : %.3lf Mpc/h"%(rsm_tot*hhub))
     print('Reading SACC file')
@@ -81,7 +88,10 @@ def main():
     csacc=sacc.SACC(tracers,binning_sacc.binning,mean)
     csacc.printInfo()
     csacc.saveToHDF(o.fname_out,save_precision=False)
-
+    theta = np.logspace(-2,1,50)
+    #for i,ww in enumerate(ws):
+    #    tab_w = astropy.table.Table([theta,ww],names=('theta','w'))
+    #    tab_w.write('2pt_corr_theo_'+str(i)+'.fits.gz')
     if o.show_plot:
         if o.sbin > len(tracers):
             print('The bin number cannot be higher than the number of tracers')
@@ -107,6 +117,7 @@ def main():
             plt.ylabel('$C_{l}l(l+1)$')
             plt.xscale('log')
             plt.ylim(-0.1,0.1)
+            plt.legend(loc='best')
             plt.savefig('sample_bin_%d.png'%o.sbin)
             plt.show()
     print('Done')

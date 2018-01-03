@@ -13,6 +13,8 @@ from numpy.linalg import inv
 import astropy.table
 debug=False
 test_photoz=False
+def opt_callback(option, opt, value, parser):
+  setattr(parser.values, option.dest, value.split(','))
 def initMPI(o):
     global comm, mrank, mranks, msize 
     
@@ -46,7 +48,8 @@ def setupOptions():
     # Right now the --templates option doesn't recognize None so as a temporary
     # solution I pass the "default" string "none".
     parser.add_option("--templates", dest="templates_fname", default="none",
-                      type="string",help="Templates to subtract from power-spectrum")
+                      type="string",help="Templates to subtract from power-spectrum",action="callback",
+                      callback=opt_callback)
     parser.add_option("--delta-ell", dest="delta_ell", default=50,type="int",
                       help="Width of ell binning")
     parser.add_option("--mpi", dest="use_mpi", default=False,
@@ -378,7 +381,7 @@ def compute_covariance(w,clpred,binning,t1,t2,t3,t4,nz1,nz2,nz3,nz4,tot_area,cw)
     t1t4 = np.logical_and(binning.binar['T1']==min(t1,t4),binning.binar['T2']==max(t4,t1))
     t2t3 = np.logical_and(binning.binar['T1']==min(t2,t3),binning.binar['T2']==max(t2,t3))
     t2t4 = np.logical_and(binning.binar['T1']==min(t2,t4),binning.binar['T2']==max(t4,t2))
-
+    print 'Checking lenghts: ',len(clpred[t1t3]),cw.wsp.lmax_a+1 
     if t1==t3:
         c13 = clpred[t1t3]+tot_area/(nz1*nz3)
     else:
@@ -416,10 +419,19 @@ def process_catalog(o) :
     nside=mask.nside
     tot_area=4.*np.pi*np.sum(mask.weights)/len(mask.weights)
     #Get contaminant templates
-    #TODO: check resolution
-    if o.templates_fname!="none" :
-        templates=[[t] for t in hp.read_map(o.templates_fname,field=None)]
-        ntemp=len(templates)
+    if "none" not in o.templates_fname:
+        #templates=[hp.ud_grade(hp.read_map(t,field=None),o.nside) for t in o.templates_fname]
+        ntemp=len(o.templates_fname)
+        templates = np.zeros((ntemp,1,12*o.nside**2))
+        for i in range(ntemp):
+            aux = hp.read_map(o.templates_fname[i])
+            #Force to zero where there are nans
+            aux[np.isnan(aux)]=0.
+            aux = hp.ud_grade(aux,o.nside)
+            aux = aux*mask.binary
+            templates[i,0,:]=aux
+            hp.mollview(aux)
+            plt.show()
     else :
         templates=None
         ntemp=0
@@ -465,11 +477,7 @@ def process_catalog(o) :
         cl_coupled=nmt.compute_coupled_cell(fa,fb)
         cl_decoupled=wsp.decouple_cell(cl_coupled,cl_bias=clb)
         return cl_decoupled
-
-    #If attempting to deproject contaminant templates, we need an estimate of the true power spectra.
-    #This can be done interatively from a first guess using cl_bias=0, but I haven't coded that up yet.
-    #For the moment we will use cl_guess=0.
-    cl_guess=np.zeros(3*nside)
+    cl_guess = np.zeros((1,3*nside))
     t1 = time()
     print "  Computing power spectrum"
     cls_all={}
@@ -477,8 +485,8 @@ def process_catalog(o) :
         f1=tracers[b1].field
         for b2 in np.arange(b1,nbins) :
             f2=tracers[b2].field
-            if ntemp>0 :
-                cl_bias=nmt.deprojection_bias(f1,f2,w,cl_theory)
+            if ntemp>0 : 
+                cl_bias=nmt.deprojection_bias(f1,f2,cl_guess)
             else :
                 cl_bias=None
             cls_all[(b1,b2)]=compute_master(f1,f2,w,clb=cl_bias)[0]
@@ -535,7 +543,7 @@ def process_catalog(o) :
     #5- Compute covariance if needed
     if o.compute_theory:
         print "Computing theoretical prediction"
-        sacc_th = compute_prediction(cat,csacc,w.wsp.lmax)
+        sacc_th = compute_prediction(cat,csacc,cw.wsp.lmax_a)
         sacc_th.saveToHDF(o.fname_out+"_theory")
     else:
         sacc_th = csacc
