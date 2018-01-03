@@ -417,7 +417,7 @@ def process_catalog(o) :
     tot_area=4.*np.pi*np.sum(mask.weights)/len(mask.weights)
     #Get contaminant templates
     #TODO: check resolution
-    if o.templates_fname!="none" :
+    if "none" not in o.templates_fname :
         templates=[[t] for t in hp.read_map(o.templates_fname,field=None)]
         ntemp=len(templates)
     else :
