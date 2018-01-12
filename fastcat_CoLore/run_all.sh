@@ -5,7 +5,7 @@ predir="/global/cscratch1/sd/damonge/sims_LSST"
 rundir=${predir}"/sims_red_noshear/"
 pz=0.02
 nnod=1
-
+which_partition="regular"
 for i in {46..100}
 do
     parfile=${rundir}/param_files/param_colore_${i}.cfg
@@ -15,7 +15,7 @@ do
     runfile=${rundir}/run_colore_files/run_fastcat_${i}.sh
     cat > ${runfile} <<EOF
 #!/bin/bash -l
-#SBATCH --partition regular
+#SBATCH --partition ${which_partition}
 ##SBATCH --qos premium
 #SBATCH --nodes ${nnod}
 #SBATCH --time=00:${timelim}:00

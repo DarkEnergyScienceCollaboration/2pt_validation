@@ -5,6 +5,7 @@ predir="/global/cscratch1/sd/damonge/sims_LSST"
 rundir=${predir}"/sims_red_noshear/"
 nnod=1
 nside=2048
+which_partition="regular"
 
 for i in {46..85}
 do
@@ -16,7 +17,7 @@ do
     cmnd="python namaster_interface.py --input-file ${infile} --output-file ${outfile} --nz-bins-file ${binsfile} --templates none --delta-ell 25 --nside ${nside}"
     cat > ${runfile} <<EOF
 #!/bin/bash -l
-#SBATCH --partition regular
+#SBATCH --partition ${which_partition}
 ##SBATCH --qos premium
 #SBATCH --nodes ${nnod}
 #SBATCH --time=00:${timelim}:00
