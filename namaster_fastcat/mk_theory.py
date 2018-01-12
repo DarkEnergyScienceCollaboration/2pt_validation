@@ -21,6 +21,7 @@ def getTheoryVec(s, cls_theory):
     for t1i,t2i,ells,ndx in s.sortTracers():
         vec[ndx]=cls_theory[(t1i,t2i)]
     return sacc.MeanVec(vec)
+
 def main():
     parser = OptionParser()
     parser.add_option('--input-sacc','-i',dest="fname_in",default=None,
@@ -51,30 +52,55 @@ def main():
     hhub = colore_dict['h']
     sigma8 = colore_dict['sigma_8']
     ns = colore_dict['ns']
+
+    print('Reading power spectrum')
+    numz=32
+    numk=len(np.loadtxt('predictions/predictions_pk_srcs_pop0_z0.000.txt',unpack=True)[0])
+    pk2d=np.zeros([numz,numk])
+    zarr=0.05*(numz-1-np.arange(numz))
+    aarr=1./(1+zarr)
+    for i in np.arange(numz) :
+        z=0.05*(numz-1-i)
+        karr,pk,dum1,dum2=np.loadtxt('predictions/predictions_pk_srcs_pop0_z%.3lf.txt'%z,unpack=True)
+        idpos=np.where(pk>0)[0];
+        if len(idpos)>0 :
+            idmax=idpos[-1]
+            pk=np.maximum(pk,pk[idmax])
+            w=1./karr**6
+            pk[idmax:]=pk[idmax]*w[idmax:]/w[idmax]
+        pk2d[i,:]=pk
+    pk2d=pk2d.flatten()
+    karr*=hhub
+    pk2d/=hhub**3
+    
     print('Setting up cosmology')
     cosmo = ccl.Cosmology(ccl.Parameters(Omega_c=oc,Omega_b=ob,h=hhub,sigma8=sigma8,n_s=ns,),matter_power_spectrum=o.pk,transfer_function=o.tf)
+    ccl.update_matter_power(cosmo,karr,aarr,pk2d,is_linear=True)
+    ccl.update_matter_power(cosmo,karr,aarr,pk2d,is_linear=False)
 
     #Compute grid scale
     zmax = colore_dict['z_max']
     ngrid = int(colore_dict['n_grid'])
-    rsm = colore_dict['r_smooth']/hhub 
-    shear= colore_dict['include_shear']=='true'
-    Lbox = 2*ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)
-    if shear:
-        a_grid=Lbox/ngrid
-    else:
-        print('No shear applied')
-        a_grid=0.5*Lbox/ngrid
-    rsm_tot = np.sqrt(rsm**2+a_grid**2/12) 
-    print("Grid smoothing : %.3lf Mpc/h"%(rsm_tot*hhub))
+    #rsm = colore_dict['r_smooth']/hhub 
+    #shear= colore_dict['include_shear']=='true'
+    #Lbox = 2*ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)
+    #if shear:
+    #    a_grid=Lbox/ngrid
+    #else:
+    #    print('No shear applied')
+    #    a_grid=Lbox/ngrid
+    #rsm_tot = np.sqrt(rsm**2+a_grid**2/12) 
+    #print("Grid smoothing : %.3lf Mpc/h"%(rsm_tot*hhub))
     print('Reading SACC file')
     #SACC File with the N(z) to analyze
     binning_sacc = sacc.SACC.loadFromHDF(o.fname_in)
+    print("Reading bias file"+o.fname_bias)
     #Bias file (it can also be included in the SACC file in the line before)
-    bias_tab = astropy.table.Table.read(o.fname_bias,format='ascii')
+    zz,bzz=np.loadtxt(o.fname_bias,unpack=True); bzz[:]=1.
     tracers = binning_sacc.tracers
     print('Got ',len(tracers),' tracers')
-    cltracers=[ccl.ClTracer(cosmo,'nc',has_rsd=o.rsd,has_magnification=False,n=(t.z,t.Nz),bias=(bias_tab['col1'],bias_tab['col2']),r_smooth=rsm_tot) for t in tracers]
+    cltracers=[ccl.ClTracer(cosmo,'nc',has_rsd=o.rsd,has_magnification=False,n=(t.z,t.Nz),
+                            bias=(zz,bzz)) for t in tracers]
     print('Cl tracers ready')
     theories = getTheories(cosmo,binning_sacc,cltracers)
     mean=getTheoryVec(binning_sacc,theories)

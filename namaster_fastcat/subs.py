@@ -263,6 +263,8 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
                 try:
                     zarr,nzarr=cat.photoz.NofZ_true(data_here,zmin,zmax,dz)
                 except:
+                    print "NO"
+                    exit(1)
                     zarr,nzarr=cat.photoz.NofZ(data_here,zmin,zmax,dz)
                 ipix=hp.ang2pix(mask.nside,dtor*(90-data_here['dec']),dtor*data_here['ra'])
                 mp_n=np.bincount(ipix,minlength=npix).astype(float)
@@ -424,13 +426,14 @@ def process_catalog(o) :
         templates=None
         ntemp=0
 
-
     #Generate bandpowers binning scheme (we're assuming all maps will use the same bandpowers!)
     print "Bandpowers"
     bpw=nmt.NmtBin(nside,nlb=o.delta_ell)
     ell_eff=bpw.get_effective_ells()
     tracers=[]
+
     #Generate tracers
+    print "Maps"
     #TODO: pass extra sampling parameters
     zs,nzs,mps=bin_catalog(cat,z0_bins,zf_bins,mask)
     if mrank!=0 :

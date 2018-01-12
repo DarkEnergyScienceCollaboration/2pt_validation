@@ -1,13 +1,36 @@
 #!/bin/bash -l
+
+timelim=15
+predir="/global/cscratch1/sd/damonge/sims_LSST"
+rundir=${predir}"/sims_red_noshear/"
+pz=0.02
+nnod=1
+
+for i in {46..100}
+do
+    parfile=${rundir}/param_files/param_colore_${i}.cfg
+    opath=${rundir}/fastcats
+    oextra=run${i}
+
+    runfile=${rundir}/run_colore_files/run_fastcat_${i}.sh
+    cat > ${runfile} <<EOF
+#!/bin/bash -l
 #SBATCH --partition regular
 ##SBATCH --qos premium
-#SBATCH --nodes 8
-#SBATCH --time=00:08:00
-#SBATCH --job-name=CoLoRe_WL
+#SBATCH --nodes ${nnod}
+#SBATCH --time=00:${timelim}:00
+#SBATCH --job-name=fastcat_${i}
 #SBATCH --account=m1727
 #SBATCH -C haswell
 module load python/2.7-anaconda
-module load h5py-parallel
-srun -n 32 python mkcat.py --params_file=../mass_mapping/param_test.cfg --opath=/global/cscratch1/sd/jsanch87/CoLoRe_LN100/fastcat_outputs --pz_type=gauss --pz_sigma=0.05 --mpi --oextra='20percent' 
+#module load h5py-parallel
+srun -n ${nnod} python mkcat.py --params_file=${parfile} --opath=${opath} --pz_type=gauss --pz_sigma=${pz} --oextra=${oextra} --wf_type=none --ztrue
 
+EOF
 
+    cat ${runfile}
+    sbatch ${runfile}
+done
+
+#python mkcat.py --params_file=/global/cscratch1/sd/damonge/sims_LSST/sims_red_noshear/param_files/param_colore_1.cfg --opath=/global/cscratch1/sd/damonge/sims_LSST/sims_red_noshear/fastcats --pz_type=gauss --pz_sigma=0.02 --wf_type=none --oextra='testing'
+#srun -n ${nnod} python mkcat.py --params_file=${parfile} --opath=${opath} --pz_type=gauss --pz_sigma=${pz} --mpi --oextra='20percent' 
