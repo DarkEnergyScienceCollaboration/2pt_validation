@@ -66,8 +66,9 @@ To generate the catalogs you have to do the following:
 
 As you can see, what `run_all.sh` does is just to submit the slurm job by calling the python script `mkcat.py` which is the interface with fastcat.
 
-The outputs from this step can be found at `/global/cscratch1/sd/jsanch87/CoLoRe_LN100/fastcat_outputs/170522+GaussPZ_0.05+hpix_nodither_0.1+catalog*/fastcat_catalog0.*` (89 realizations x 32 files)
+The outputs from this step can be found at `/global/cscratch1/sd/jsanch87/CoLoRe_LN100/fastcat_outputs/170522+GaussPZ_0.05+hpix_nodither_0.1+catalog*/fastcat_catalog0.*` (89 realizations x 32 files).
 
+Note: Make sure that the option `--ztrue` is included in order to compute the N(z) in the next step.
 ## Step 3) Computing the power-spectra using NaMaster
 
 Now that you have your source catalogs you can try to analyze their 2-point statistics. In order to do so, we decided to use [NaMaster](https://github.com/damonge/namaster). `NaMaster` is an implementation of the `Master` algorithm by D. Alonso using unbiased pseudo-Cl estimation and able to perform mode projection. We use `NaMaster` through `namaster_interface.py`. This program reads each one of our `fastcat` catalogs and generates `HEALpix` maps using the binning in redshift specified by an ASCII file that also includes the maximum `l` at which we want to calculate the power-spectra. The program outputs a [SACC](https://github.com/LSSTDESC/SACC) file containing the results for the different tracers and information about the binning, N(z), etc.
