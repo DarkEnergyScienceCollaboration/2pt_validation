@@ -6,7 +6,8 @@ rundir=${predir}"/sims_red_noshear/"
 pz=0.02
 nnod=1
 which_partition="regular"
-for i in {2..50}
+
+for i in {51..100}
 do
     parfile=${rundir}/param_files/param_colore_${i}.cfg
     opath=${rundir}/fastcats
