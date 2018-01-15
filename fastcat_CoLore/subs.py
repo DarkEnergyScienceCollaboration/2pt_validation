@@ -79,6 +79,8 @@ def setupOptions():
                       help="If Nstars>0, subsample to this number of stars. If Nstars=-1 use the full stellar catalog")
     parser.add_option("--mpi", dest="use_mpi", default=False,
                       help="If used, use mpi4py for parallelization ",action="store_true")
+    parser.add_option("--date-in-output",dest="date_out",default=False,
+                      help="If used, the output path will contain the date of run in the prefis")
     ## WF and PZ options
     fc.window.registerOptions(parser)
     ## PZ options
@@ -169,7 +171,10 @@ def process(o):
         if fopath is None:
             dt=datetime.datetime.now()
             daystr="%02i%02i%02i"%(dt.year-2000,dt.month,dt.day)
-            fopath=o.opath+"/"+daystr+"+"+pz.NameString()+"+"+wfunc.NameString()+out_extra
+            fopath=o.opath+"/"
+            if o.date_out :
+                fopath+=daystr+"+"
+            fopath+=pz.NameString()+"+"+wfunc.NameString()+out_extra
             if (mrank==0):
                 if not os.path.exists(fopath):
                     os.makedirs(fopath)

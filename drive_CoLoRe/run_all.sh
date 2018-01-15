@@ -12,7 +12,21 @@ mkdir -p ${rundir}
 mkdir -p ${rundir}/param_files
 mkdir -p ${rundir}/run_colore_files
 
-for i in {1..100}
+#Cosmological parameters and sample files
+Om=0.30
+Ol=$(printf "%.3f" $(echo "1.-${Om}" | bc))
+Ob=0.05
+hh=0.70
+s8=0.80
+ns=0.96
+pkname=${predir}/sample_LSST/Pk.txt
+nzname=${predir}/sample_LSST/NzRed.txt
+bzname=${predir}/sample_LSST/BzBlue.txt
+
+#First generate linear power spectrum
+python mkpk.py ${Om} ${Ob} ${hh} ${s8} ${ns} linear boltzmann ${pkname}
+
+for i in {51..100}
 do
     parfile=${rundir}/param_files/param_colore_${i}.cfg
     cat > ${parfile} << EOF
@@ -26,7 +40,7 @@ global:
   output_density= false
   #Path to power spectrum at z=0. Power spectrum file must
   #be in CAMB format: k (h/Mpc), P(k) (Mpc/h)^3.
-  pk_filename= "${predir}/sample_run/Pk_CAMB_test.dat"
+  pk_filename= "${pkname}"
   #This redshift range also defines the size of the box
   z_min= 0.001
   z_max= 1.6
@@ -67,21 +81,21 @@ field_par:
 cosmo_par:
 {
   #Non-relativistic matter
-  omega_M= 0.3
+  omega_M= ${Om}
   #Dark energy
-  omega_L= 0.7
+  omega_L= ${Ol}
   #Baryons
-  omega_B= 0.05
+  omega_B= ${Ob}
   #Hubble parameter (in units of 100 km/s/Mpc)
-  h= 0.7
+  h= ${hh}
   #Dark energy equation of state
   w= -1.0
   #Primordial scalar spectral index, used only to extrapolate
   #P(k) at low k end (-3 used at high k end)
-  ns= 0.96
+  ns= ${ns}
   #Power spectrum normalization. The input power spectrum will be
   #renormalized to this sigma8
-  sigma_8= 0.803869
+  sigma_8= ${s8}
 }
 
 #For each galaxy population, create a section called srcsX, starting with X=1
@@ -91,11 +105,11 @@ srcs1:
   # 1-> z, 2-> dN(z)/dz*dOmega
   # with dN/dzdOmega in units of deg^-2
   # Include one name per population, separated by spaces
-  nz_filename= "${predir}/sample_LSST/NzRed.txt"
+  nz_filename= "${nzname}"
   #Path to bias file. Should contain two columns
   # 1-> z, 2-> b(z)
   # Include one name per population, separated by spaces
-  bias_filename= "${predir}/sample_LSST/BzBlue.txt"
+  bias_filename= "${bzname}"
   #Do you want to include shear ellipticities?
   include_shear= false
   #Do you want to store line-of-sight skewers for each object?
@@ -128,6 +142,6 @@ srun -n ${nnod} -c 64 ${exec_colore} ${parfile}
 EOF
 
 #${exec_colore}_nompi --test-memory ${parfile}
-sbatch ${runfile}
-cat ${runfile}
+    sbatch ${runfile}
+    cat ${runfile}
 done
