@@ -36,6 +36,7 @@ typedef struct {
   double zmax;
   double dz;
   char prefix_out[256];
+  int do_ln;
 } ParamLN;
 
 int linecount(FILE *f)
@@ -80,13 +81,18 @@ void param_ln_free(ParamLN *par)
 }    
 
 ParamLN *param_ln_new(double om,double ob,double hh,double ns,double s8,char *fname_bz,
-		      double rsm,double zmax,double dz,char *prefix_out)
+		      double rsm,double zmax,double dz,char *transfer,char *prefix_out,int do_ln)
 {
   ParamLN *par=my_malloc(sizeof(ParamLN));
+  ccl_configuration config=default_config;
+  if(!strcmp(transfer,"eisenstein_hu")) {
+    printf("Using EH\n");
+    config.transfer_function_method=ccl_eisenstein_hu;
+  }
 
   //Cosmology
   int status=0;
-  par->cosmo=ccl_cosmology_create_with_lcdm_params(om-ob,ob,0,hh,s8,ns,default_config,&status);
+  par->cosmo=ccl_cosmology_create_with_lcdm_params(om-ob,ob,0,hh,s8,ns,config,&status);
   par->hh=hh;
 
   //Bias spline
@@ -118,6 +124,10 @@ ParamLN *param_ln_new(double om,double ob,double hh,double ns,double s8,char *fn
 
   //Output
   sprintf(par->prefix_out,"%s",prefix_out);  
+
+  //Do LN
+  par->do_ln=do_ln;
+  printf("Do ln %d\n",par->do_ln);
 
   return par;
 }
@@ -160,8 +170,10 @@ void write_predictions(ParamLN *par)
 #endif //_DEBUG
     for (int i=0; i<Nk; i++) pk[i]=pklin[i]*bias*bias*exp(-rsm2*ka[i]*ka[i]);
     pk2xi(Nk,ka,pk,ra,xi);
-    for (int i=0; i<Nk; i++) xi[i]=exp(xi[i])-1;
-    xi2pk(Nk,ra,xi,ka,pk);
+    if(par->do_ln) {
+      for (int i=0; i<Nk; i++) xi[i]=exp(xi[i])-1;
+      xi2pk(Nk,ra,xi,ka,pk);
+    }
     // now open the files
     sprintf(fnamepk,"%s_pk_z%.3lf.txt",par->prefix_out,z);
     sprintf(fnamexi,"%s_xi_z%.3lf.txt",par->prefix_out,z);
@@ -193,10 +205,11 @@ void write_predictions(ParamLN *par)
 
 int main(int argc,char **argv)
 {
+  int do_ln;
   double om,ob,hh,ns,s8,rsm,zmax,dz;
-  char fname_bz[256],prefix_out[256];
-  if(argc!=11) {
-    fprintf(stderr,"Usage : lnpred Om Ob hh ns s8 fname_bz r_smooth zmax delta_z prefix_out\n");
+  char fname_bz[256],prefix_out[256],transfer_function[256];
+  if(argc!=13) {
+    fprintf(stderr,"Usage : lnpred Om Ob hh ns s8 fname_bz r_smooth zmax delta_z transfer_function prefix_out do_LN\n");
     return 1;
   }
   om=atof(argv[1]);
@@ -208,9 +221,11 @@ int main(int argc,char **argv)
   rsm=atof(argv[7]);
   zmax=atof(argv[8]);
   dz=atof(argv[9]);
-  sprintf(prefix_out,"%s",argv[10]);
+  sprintf(transfer_function,"%s",argv[10]);
+  sprintf(prefix_out,"%s",argv[11]);
+  do_ln=atoi(argv[12]);
 
-  ParamLN *par=param_ln_new(om,ob,hh,ns,s8,fname_bz,rsm,zmax,dz,prefix_out);
+  ParamLN *par=param_ln_new(om,ob,hh,ns,s8,fname_bz,rsm,zmax,dz,transfer_function,prefix_out,do_ln);
   write_predictions(par);
   param_ln_free(par);
   return 0;

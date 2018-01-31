@@ -14,37 +14,34 @@ Requirements:
 
 * [NaMaster](https://github.com/damonge/namaster)
 
-Optional requirements (only necessary for cosmological parameter retrieval):
-
 * [CCL](https://github.com/LSSTDESC/CCL)
 
 * [LSSLike](https://github.com/LSSTDESC/LSSLike)
 
 Each one of the required pieces of software has its own installation procedure. If you find any bugs or problems please contact the authors.
 
+**Warning:** as of Jan 31st 2018 some of these dependencies have been significantly updated. Please make sure to:
+- Pull and compile the latest version of CoLoRe (master branch).
+- Pull and install the latest version of NaMaster (master branch).
+- Pull and install the latest version of fastcat (master branch).
+- Pull and install the latest version of CCL (**external_pk** branch. This is the one needed to compute lognormal predictions).
+
 ## Step 1) Generation of the cosmological mocks using CoLoRe
 
-[CoLoRe](https://github.com/damonge/colore) is a highly parallel software capable of generating fast cosmological mocks using three different approaches: lognormal, 1-loop LPT, and 2-loop LPT. These mocks can include different properly correlated tracers with their corresponding bias. CoLoRe is also able to generate the corresponding convergence and shear maps, intensity mapping and ISW effect. All you have to do is to input the proper `param.cfg` file and run `./CoLoRe param.cfg`.
+[CoLoRe](https://github.com/damonge/colore) is a highly parallel software capable of generating fast cosmological mocks using three different approaches: lognormal, 1-order LPT, and 2-order LPT. These mocks can include different properly correlated tracers with their corresponding bias. CoLoRe is also able to generate the corresponding convergence and shear maps, intensity mapping and ISW effect. All you have to do is to input the proper `param.cfg` file and run `./CoLoRe param.cfg`.
 
-In our case, we restrict our analysis to a single galaxy population with the fiducial LSST N(z) and b(z). We generate 100 realizations of a simulation with 3072^3 pixels from redshift 0.001 to 2.5 using a Planck-2015 fiducial input cosmology. We select the 2-loop 2LPT method with no smoothing and generate lens planes from z=0 to z=2.4 at redshift intervals of 0.2.
+In our case, we restrict our analysis to a single galaxy population. Our current setup includes only a sample of red galaxies similar to what LSST should be able to observe, defined by their N(z) and b(z). We generate 100 realizations of a simulation with 4096^3 grid cells from redshift 0.001 to 1.6 using a Planck-like input cosmology. We select the lognormal method with a 2 Mpc/h smoothing in order to be able to recover accurate theoretical predictions.
 
 To run this part, assuming that you have CoLoRe properly installed and running at Cori, you have to connect to Cori and in a terminal follow these steps:
 
 * Go to the folder `drive_CoLoRe`.
-* Open `launch_run_colore.sh` with your favorite text editor.
-* Modify line 1 and select the range of the for loop in which you want to run the simulations. By default is set from 17 to 88 (so in total you are trying to submit 71 jobs each of them requiring 32 nodes) but you will need to modify this in order to be able to allocate it in the production queue. See the [queuing policy at Cori](http://www.nersc.gov/users/computational-systems/cori/running-jobs/queues-and-policies/) to check how many jobs you can submit at once (in normal conditions you should not be able to submit more than 50). 
-* Edit line 7 to modify the output path. We recommend using your $SCRATCH space at NERSC since these simulations are quite big.
-* Edit line 14 to include the path to the input power-spectrum that you want to use. The format is the same as CAMB outputs, i.e., an ASCII file with two columns, the first one includes k in units of h/Mpc and the second P(k) in units of (h/Mpc)^3.
-* Edit lines 75 and 79 to include the path to the input N(z) and b(z) files that you want to use. The formats are similar in both cases. You need two ASCII files with two columns, in the first one you include z and in the second one N (or b in the case of the bias input file) at that redshift.
-* Type `/bin/bash launch_run_colore.sh`.
+* Open `run_all.sh` with your favorite text editor and modify all relevant lines (the comments in this script should make it self-explanatory).
+* Depending on the purpose of your run (e.g. debug) or its size (e.g. n_grid, #gals etc.) you'll have to tweak the queue-related variables.
+* Type `/bin/bash run_all.sh` to launch the sims.
 
-This bash script will create the necessary parameter files for CoLoRe and submit the jobs to the queue. Each one of these simulations takes less than 15 minutes to finish. However, depending on the status of the queue the jobs might be pending for a while before the start running. You can change the priority by uncommenting line 96 of `launch_run_colore.sh` (just leave on #). This process can also be done in Edison but due to its smaller memory per node you might need to change considerably `launch_run_colore.sh` to be able to successfully run the simulations using Edison.
+Expect each realization to take up ~10 GB of disk space.
+**Warning:** we plan on having this process automatized in vc.py, however this is still not ready. As of Jan 31st 2018 no modifications have been made wrt the original version.
 
-Expect each realization to need ~135 GB.
-
-_This process will change once we update the script `vc.py` in the folder `drive_CoLoRe`_.
-
-The outputs from this step can be found at `/global/cscratch1/sd/jsanch87/CoLoRe_LN100/Mock*.h5` (89 realizations x 32 files/each)
 
 ## Step 2) Generation of the catalogs
 
@@ -53,56 +50,41 @@ Once we have the cosmological mocks generated by CoLoRe, we want to add several 
 To generate the catalogs you have to do the following:
 
 * Go to the directory `fastcat_CoLore`.
-* Open `run_all.sh` in any text editor.
-* Go to line 11 and change the relevant paths and options to get your desired output catalog.
-* The option `--params_file` selects the input CoLoRe parameter file to generate the realization that you want to pass through `fastcat`.
-* The option `--opath` selects the ouput path for your `fastcat` catalog. Each realization needs ~19 GB.
-* The option `--pz_type` selects the flavor of photometric redshift that you want to use. It can be: none,gauss, twopop, hiddenvar, franzona,sed.
-* The option `--pz_sigma` selects the width of the Gaussian in case of choosing a Gaussian photo-z.
-* The option `--oextra` adds extra information to the output directory (you should put the name or number of the realization that you are considering).
-* The option `--mpi` enables MPI parallel processing.
-* The option `--wf_type` specifies the type of angular mask. If not specified  it uses the default which contains the depth variations expected using the LSST dithering strategy in Awan et al. You can also select: `none`, which corresponds to full sky survey or `radecbcut` which is just a simple masking of the galactic plane and part of the northern hemisphere.
-* Once you modified `run_all.sh` just do `sbatch run_all.sh` to submit your job.
+* Open `run_all.sh` in any text editor, and edit it at will. The comments should make it self-explanatory.
+* This script makes use of `mkcat.py`. The available command-line options can be found running `python mkcat.py -h`.
+* **Warning:** many of the options implemented in `mkcat.py` have not been tested yet. This includes mpi parallelization, photo-z options other than Gaussian, window functions other than "none" and star contamination. Also, currently we can only guarantee unbiased N(z)'s if you include the option `--ztrue`.
+* Type `/bin/bash run_all.sh` to process all sims.
 
-As you can see, what `run_all.sh` does is just to submit the slurm job by calling the python script `mkcat.py` which is the interface with fastcat.
 
-The outputs from this step can be found at `/global/cscratch1/sd/jsanch87/CoLoRe_LN100/fastcat_outputs/170522+GaussPZ_0.05+hpix_nodither_0.1+catalog*/fastcat_catalog0.*` (89 realizations x 32 files).
-
-Note: Make sure that the option `--ztrue` is included in order to compute the N(z) in the next step.
 ## Step 3) Computing the power-spectra using NaMaster
 
-Now that you have your source catalogs you can try to analyze their 2-point statistics. In order to do so, we decided to use [NaMaster](https://github.com/damonge/namaster). `NaMaster` is an implementation of the `Master` algorithm by D. Alonso using unbiased pseudo-Cl estimation and able to perform mode projection. We use `NaMaster` through `namaster_interface.py`. This program reads each one of our `fastcat` catalogs and generates `HEALpix` maps using the binning in redshift specified by an ASCII file that also includes the maximum `l` at which we want to calculate the power-spectra. The program outputs a [SACC](https://github.com/LSSTDESC/SACC) file containing the results for the different tracers and information about the binning, N(z), etc.
+Now that you have your source catalogs you can try to analyze their 2-point statistics. We do so with [NaMaster](https://github.com/damonge/namaster). `NaMaster` is an implementation of the `Master` algorithm by D. Alonso using unbiased pseudo-Cl estimation and able to perform mode projection (among other things). We use `NaMaster` through `namaster_interface.py`. This program reads each one of our `fastcat` catalogs and generates `HEALpix` maps using the binning in redshift specified by an ASCII file that also includes the maximum `l` at which we want to calculate the power-spectra. The program outputs a [SACC](https://github.com/LSSTDESC/SACC) file containing the results for the different tracers and information about the binning, N(z), etc.
 
 To compute the power-spectra you have to follow these steps:
 
 * Go to the directory `namaster_fastcat`.
-* Open the file `run_all.sh`.
-* Modify the relevant paths and options for `namaster_interface.py`. 
-* The option `--input-file` specifies the name of the input fastcat catalog. If there are multiple parts you only have to specify the root (usually the full path to the file called `fastcat_catalog0.h5`).
-* The option `--output-file` specifies the output name.
-* The option `--nz-bins-file` specifies the name of the file containing the binning information.
-* The option `--templates` selects the templates in which you want to perform mode projection.
-* The option `--delta-ell` selects the binning in `l`.
-* The option `--nside` specifies the resolution (in terms of the HEALpix Nside parameter) of the maps. If you are generating simulations with `n_grid=3072`, 2048 is an adecquate value.
-* The option `--mpi` enables parallel MPI processing.
-* Once you have modified `run_all.sh` to your liking you just have to type: `sbatch run_all.sh` to submit your job.
+* Open `run_all.sh` in any text editor, and edit it at will. The comments should make it self-explanatory.
+* This script makes use of `namaster_interface.py`. The available command-line options can be found running `python namaster_interface.py -h`.
+* **Warning:** some of these options haven't been tested yet. This includes mpi parallelization, estimating the analytic covariance matrix, taking in an external NmtWorkspace object.
+* **Warning:** this script was also used in the past to compute the theoretical predictions. This is not the case anymore.
+* Type `/bin/bash run_all.sh` to process all sims.
 
-The outputs from this step can be found at `/global/cscratch1/sd/jsanch87/2pt_namaster_output/catalog*.sacc`
 
-## Step 4) Compute the theoretical prediction (Optional)
+## Step 4) Compute the theoretical prediction
 
-If you want you can compute the theoretical prediction for the sample SACC file just typing `python mk_theory.py` in the directory `namaster_fastcat`. You have to pass the arguments:
-* `-i`, this is the path to the input SACC file containing the N(z) and tracers that you want to use for your theoretical predictions.
-* `--param-file`, this is the CoLoRe param file that you used to generate the catalog (and contains the values for the cosmological parameters of the prediction you want to compute).
-* `-o`, path to output SACC file containing the theoretical prediction.
-* `--bias`, path to file containing the bias of the tracers to analyze.
-* `--shot-noise`, path to file containing the estimation of the shot-noise (this is optional, if not specified it remains unsubtracted).
-To account for the different interpolation/gridding operations that take place within CoLoRe, the P(k) used to compute the theoretical predictions should be smoothed with a Gaussian radius given by:
-  R_smooth = (R_s^2 + (0.5*a_grid)^2/12)^1/2
-where R_s is the smoothing scale parmeter passed to CoLoRe and a_grid is the grid size (this is reported by CoLoRe, and can be computed as 2*chi(z_max)*(1+2/Ngrid)/Ngrid, where Ngrid is the number of grid cells per dimension and chi(z) is the radial comoving distance to redshift z.
+This repo currently also hosts scripts to compute the theoretical predictions for the angular power spectra of the simulations. These are housed in the `theory_comparison` folder. To generate them:
+* Go to the directory `theory_comparison`.
+* Open `run_all.sh` in any text editor, and edit it at will. The comments should make it self-explanatory.
+* This script makes use of `mk_theory.py`. The available command-line options can be found running `python mk_theory.py -h`.
+* **Warning:** some of these options haven't been tested yet. This includes mostly the inclusion of RSDs.
+* **Warning:** in order to estimate the lognormal prediction, a small C program (`lnpred`) needs to be compiled first. In order to do that, type `make`. You may have to modify the paths to the relevant libraries (GSL, FFTW, CCL) in `Makefile`.
+* Type `/bin/bash run_all.sh` to process all sims.
+
+This will generate theoretical predictions for all sims and store them as SACC files (note that all sims should in principle have the same theoretical prediction, but in practice there will be small variations between sims due to the statistical fluctuations in the estimated N(z)s). Have a look at the script `compare.py` to understand how to use the SACC files (both data and theory). This script reads the estimated data and theory power spectra for all sims and compares them (both the Gaussian and lognormal predictions).
+
+**Warning:** the contents of this folder are only temporary. Ideally we'd like to incorporate the calculation of the lognormal prediction within the official LSS likelihood [LSSLike](https://github.com/LSSTDESC/LSSLike). This is work in progress and is currently the most urgent target of this project.
+
 
 ### Final notes and disclaimer
 
 We recommend to use the anaconda distribution in Cori and install the relevant python packages using the option `python setup.py install --user` since this makes the installation/update process easier. Please, post issues or send your questions or comments to any of the authors.
-
-

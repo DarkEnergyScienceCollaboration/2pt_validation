@@ -25,25 +25,23 @@ def getTheoryVec(s, cls_theory):
 def main():
     parser = OptionParser()
     parser.add_option('--input-sacc','-i',dest="fname_in",default=None,
-        help='Name of input SACC file')
+                      help='Name of input SACC file')
     parser.add_option('--output-sacc','-o',dest="fname_out",default=None,
-        help='Name of output SACC file')
+                      help='Name of output SACC file')
     parser.add_option('--show-plot',dest="show_plot",default=False,action="store_true",
-        help="Show plot comparing data and theory")
+                      help="Show plot comparing data and theory")
     parser.add_option('--param-file',dest="param_file",default=None,
-        help="Path to CoLoRe param file")
+                      help="Path to CoLoRe param file")
     parser.add_option('--power-spectrum-type',dest="pk",default='linear',type=str,
-        help="Power spectrum type: [`linear`,`halofit`]")
+                      help="Power spectrum type: [`linear`,`halofit`]")
     parser.add_option('--transfer-function',dest="tf",default='boltzmann',type=str,
-        help="Type of transfer function: [`eisenstein_hu`,`bbks`,`boltzmann`,`halofit`]")
-    #parser.add_option("--bias-file",dest="fname_bias",default=None,
-    #    help="Path to bias file")
-    #parser.add_option("--shot-noise-file",dest="fname_sn",default=None, #CHECK
-    #    help="Path to shot-noise file")
+                      help="Type of transfer function: [`eisenstein_hu`,`bbks`,`boltzmann`,`halofit`]")
     parser.add_option("--include-rsd",dest="rsd",default=False,action="store_true",
-        help="Include RSD")
+                      help="Include RSD")
     parser.add_option("--dz-lognormal",dest="dz_ln",default=0.05,type=float,
-        help="Redshift interval to use in computation of lognormal prediction")
+                      help="Redshift interval to use in computation of lognormal prediction")
+    parser.add_option("--do-lognormal",dest="do_ln",default=False,action="store_true",
+                      help="Do we want to do the lognormal transformation?")
     (o, args) = parser.parse_args()
 
     #Read cosmological parameters and set cosmology object
@@ -79,8 +77,13 @@ def main():
     cmd+="%lf "%rsm_tot
     cmd+="%lf "%zmax
     cmd+="%lf "%o.dz_ln
-    cmd+=o.fname_out+".lnpred"
-    cmd+=" > "+o.fname_out+".lnpred_log"
+    cmd+=o.tf+" "
+    cmd+=o.fname_out+".lnpred "
+    if o.do_ln>0 :
+        cmd+="1 "
+    else :
+        cmd+="0 "
+#    cmd+="> "+o.fname_out+".lnpred_log"
     os.system(cmd)
 
     #Read lognormal prediction
@@ -135,5 +138,6 @@ def main():
             plt.plot(t.z,t.Nz)
         plt.show()
     print('Done')
+
 if __name__=="__main__":
     main()

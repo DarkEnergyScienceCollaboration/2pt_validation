@@ -1,13 +1,22 @@
 #!/bin/bash -l
 
+#Time limit in minutes
 timelim=15
-predir="/global/cscratch1/sd/damonge/sims_LSST"
-rundir=${predir}"/sims_red_noshear/"
-pz=0.02
+#Number of nodes
 nnod=1
+#Queue to use
 which_partition="regular"
 
-for i in {51..100}
+#Output paths
+predir="/global/cscratch1/sd/damonge/sims_LSST"
+#rundir=${predir}"/sims_red_noshear/"
+rundir=${predir}"/sims_red_noshear_eh/"
+
+#Gaussian photo_z widht /(1+z)
+pz=0.02
+
+#Launch all jobs
+for i in {1..100}
 do
     parfile=${rundir}/param_files/param_colore_${i}.cfg
     opath=${rundir}/fastcats
@@ -35,6 +44,3 @@ EOF
     sbatch ${runfile}
 #    echo ${runcmd}
 done
-
-#python mkcat.py --params_file=/global/cscratch1/sd/damonge/sims_LSST/sims_red_noshear/param_files/param_colore_1.cfg --opath=/global/cscratch1/sd/damonge/sims_LSST/sims_red_noshear/fastcats --pz_type=gauss --pz_sigma=0.02 --wf_type=none --oextra='testing'
-#srun -n ${nnod} python mkcat.py --params_file=${parfile} --opath=${opath} --pz_type=gauss --pz_sigma=${pz} --mpi --oextra='20percent' 

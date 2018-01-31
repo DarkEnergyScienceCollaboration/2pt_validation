@@ -57,8 +57,6 @@ def setupOptions():
                       help="Save input maps to namaster")
     parser.add_option("--compute-covariance",dest="compute_covariance",default=False,action="store_true",
                       help="Compute the theoretical covariance matrix using the predicted Cls")
-    parser.add_option("--compute-theory",dest="compute_theory",default=False,action="store_true",
-                      help="Compute the theoretical prediction for the power-spectra and use it for the covariances")
     parser.add_option("--subtract-shot-noise",dest="sub_sn",default=False,action="store_true",
                       help="Subtract shot-noise to NaMaster results, if not used the shot-noise will be saved in a file")
     (o, args) = parser.parse_args()
@@ -138,6 +136,8 @@ class Mask(object) :
             self.binary =hp.ud_grade(self.binary ,nside_out=nside)
             self.weights=hp.ud_grade(self.weights,nside_out=nside)
             self.ip_nomask=np.where(self.weights>0)[0]
+        #Pixel area
+        self.pixOmega=4*np.pi/hp.nside2npix(self.nside)
         if debug:
             hp.mollview(self.weights)
             plt.show()
@@ -186,6 +186,7 @@ class Tracer(object) :
         #Angular resolution
         self.nside=mask.nside
         npix=hp.nside2npix(self.nside)
+        npix_unmasked=len(mask.ip_nomask)+0.
         if hp.npix2nside(len(map_n))!=self.nside :
             raise ValueError("Mask and map have different resolutions")
 
@@ -199,16 +200,17 @@ class Tracer(object) :
         #3- Compute overdensity field
         #In order to transform the number counts map into an overdensity we make the following assumption:
         #  - The mean density in each pixel is n_mean_i \propto weights_i
-        #  - In that case delta_i = n_i/n_mean_i-1 = norm * n_i/weights_i -1
-        #    where the normalization factor is norm = <weights>/<n>
+        #  - In that case delta_i = n_i/n_mean_i-1 = n_i/(nmean * weights_i) -1
+        #    where the normalization factor is nmean = <n/weights>
         #TODO: if parts of the map are contaminated it may be worth passing a set of pixels
         #      defining a clean region that should be used to compute the mean density.
         #      currently we use the whole (unmasked) sky.
-        norm=np.sum(mp_n)/np.sum(mask.weights)
+        nmean=np.mean(mp_n[mask.ip_nomask]/mask.weights[mask.ip_nomask])
         mp_delta=np.zeros(npix)
-        mp_delta[mask.ip_nomask]=1./norm*(mp_n[mask.ip_nomask]/mask.weights[mask.ip_nomask])-1.
+        mp_delta[mask.ip_nomask]=mp_n[mask.ip_nomask]/(nmean*mask.weights[mask.ip_nomask])-1.
+        self.shotnoise=mask.pixOmega**2*np.sum(1./mask.weights[mask.ip_nomask])/(4*np.pi*nmean)
         if debug:
-            print np.max(mp_delta[mask.ip_nomask]), np.min(mp_delta[mask.ip_nomask]), '; Max= ', np.max(mp_n[mask.ip_nomask]/mask.weights[mask.ip_nomask]), ' Mean= ',norm
+            print np.max(mp_delta[mask.ip_nomask]), np.min(mp_delta[mask.ip_nomask]), '; Max= ', np.max(mp_n[mask.ip_nomask]/mask.weights[mask.ip_nomask]), ' Mean= ',nmean
             hp.mollview(mp_delta)
             plt.show()
             ma_delta = hp.ma(mp_delta)
@@ -320,57 +322,7 @@ def bin_catalog(cat,z0_arr,zf_arr,mask,zmin=0,zmax=4.,n_sampling=1024,dz_samplin
 
     return zarr_out,nzarr_out,maps_all
 
-def compute_prediction(fc_catalog,sacc_obj,lmax):
-    """This routine ingests a fastcat catalog and the sacc object containing the
-    requested binning and tracers and outputs a sacc object containing the predicted
-    power-spectra"""
-    try:
-        import pyccl as ccl
-    except ImportError:
-        raise ImportError('Failed to import pyccl. Cannot compute theoretical \
-            predictions without CCL.')
-    def getTheories(ccl_cosmo,s,ctracers):
-        theo={}
-        for t1i,t2i,ells,_ in s.sortTracers():
-            cls=ccl.angular_cl(ccl_cosmo,ctracers[t1i],ctracers[t2i],ells)
-            theo[(t1i,t2i)]=cls
-            theo[(t2i,t1i)]=cls
-        return theo
-    def getTheoryVec(s, cls_theory):
-        vec=np.zeros((s.size(),))
-        for t1i,t2i,ells,ndx in s.sortTracers():
-            vec[ndx]=cls_theory[(t1i,t2i)]
-        return sacc.MeanVec(vec)
-
-    #This is hardcoded for now to calculate the theoretical predictions and the grid scale
-    hhub=0.69
-    zmax=2.5
-    ngrid=3072
-    cosmo = ccl.Cosmology(ccl.Parameters(Omega_c=0.266,Omega_b=0.049,h=hhub,sigma8=0.8,n_s=0.96,),matter_power_spectrum='linear',transfer_function='eisenstein_hu')
-    a_grid=2*ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)/ngrid*hhub 
-    tracers = sacc_obj.tracers
-    Ntracer = len(tracers)
-    lvals = np.arange(lmax+1) 
-    type,ell,t1,q1,t2,q2=[],[],[],[],[],[]
-    for t1i in range(Ntracer):
-        for t2i in range(t1i,Ntracer):
-            for l in lvals:
-                type.append('F')
-                ell.append(l)
-                t1.append(t1i)
-                q1.append('P')
-                t2.append(t2i)
-                q2.append('P')          
-    binning=sacc.Binning(type,ell,t1,q1,t2,q2)
-    sacc_obj.binning=binning
-    bias = fc_catalog.bz
-    cltracers=[ccl.ClTracer(cosmo,'nc',False,False,n=(t.z,t.Nz),bias=(fc_catalog.bz['z'],fc_catalog.bz['bz']),r_smooth=0.5*a_grid) for t in tracers]
-    theories = getTheories(cosmo,sacc_obj,cltracers)
-    mean=getTheoryVec(sacc_obj,theories)
-    csacc=sacc.SACC(tracers,binning,mean)
-    return csacc
-
-def compute_covariance(w,clpred,binning,t1,t2,t3,t4,nz1,nz2,nz3,nz4,tot_area,cw):
+def compute_covariance(w,clpred,binning,t1,t2,t3,t4,nz1,nz2,cw):
     """Routine to compute the covariance matrix using NaMaster
     needs a NaMaster workspace w, the 4 tracers considered, and an array with the predicted cls
     cl_t1t3, cl_t1t4, cl_t2t3, cl_t2t4.
@@ -382,19 +334,19 @@ def compute_covariance(w,clpred,binning,t1,t2,t3,t4,nz1,nz2,nz3,nz4,tot_area,cw)
     t2t4 = np.logical_and(binning.binar['T1']==min(t2,t4),binning.binar['T2']==max(t4,t2))
 
     if t1==t3:
-        c13 = clpred[t1t3]+tot_area/(nz1*nz3)
+        c13 = clpred[t1t3]+1./nz1
     else:
         c13 = clpred[t1t3]
     if t1==t4:
-        c14 = clpred[t1t4]+tot_area/(nz1*nz4)
+        c14 = clpred[t1t4]+1./nz1
     else:
         c14 = clpred[t1t4]
     if t2==t3:
-        c23 = clpred[t2t3]+tot_area/(nz2*nz3)
+        c23 = clpred[t2t3]+1./nz2
     else:
         c23 = clpred[t2t3]
     if t2==t4:
-        c24 = clpred[t2t4]+tot_area/(nz2*nz4)
+        c24 = clpred[t2t4]+1./nz2
     else:
         c24 = clpred[t2t4]  
     return nmt.gaussian_covariance(cw,c13,c14,c23,c24)
@@ -417,8 +369,8 @@ def process_catalog(o) :
     mask=Mask(cat,o.nside,o.theta_apo)
     nside=mask.nside
     tot_area=4.*np.pi*np.sum(mask.weights)/len(mask.weights)
+
     #Get contaminant templates
-    #TODO: check resolution
     if "none" not in o.templates_fname :
         templates=[[t] for t in hp.read_map(o.templates_fname,field=None)]
         ntemp=len(templates)
@@ -464,9 +416,9 @@ def process_catalog(o) :
         w.read_from(o.nmt_workspace)
 
     #Compute all cross-correlations
-    def compute_master(fa,fb,wsp,clb) :
+    def compute_master(fa,fb,wsp,clb=None,cln=None) :
         cl_coupled=nmt.compute_coupled_cell(fa,fb)
-        cl_decoupled=wsp.decouple_cell(cl_coupled,cl_bias=clb)
+        cl_decoupled=wsp.decouple_cell(cl_coupled,cl_bias=clb,cl_noise=cln)
         return cl_decoupled
 
     #If attempting to deproject contaminant templates, we need an estimate of the true power spectra.
@@ -480,11 +432,15 @@ def process_catalog(o) :
         f1=tracers[b1].field
         for b2 in np.arange(b1,nbins) :
             f2=tracers[b2].field
+            if (b1==b2) and o.sub_sn :
+                cl_noise=tracers[b1].shotnoise*np.ones([1,3*nside])
+            else :
+                cl_noise=None
             if ntemp>0 :
-                cl_bias=nmt.deprojection_bias(f1,f2,w,cl_theory)
+                cl_bias=nmt.deprojection_bias(f1,f2,w,cl_guess)
             else :
                 cl_bias=None
-            cls_all[(b1,b2)]=compute_master(f1,f2,w,clb=cl_bias)[0]
+            cls_all[(b1,b2)]=compute_master(f1,f2,w,clb=cl_bias,cln=cl_noise)[0]
 
         print 'Computed bin: ', b1, b2, ' in ', time()-t1, ' s'
         if debug:
@@ -515,43 +471,32 @@ def process_catalog(o) :
     sbin=sacc.Binning(typ,ell,t1,q1,t2,q2)
     ssbin=sacc.SACC(stracers,sbin)
       
-    #3- Arrange power spectra into SACC mean vector and subtract shot noise
+    #3- Arrange power spectra into SACC mean vector
     vec=np.zeros((ssbin.size(),))
-    shot_noise = np.zeros((len(tracers),len(tracers)))
     for t1i,t2i,ells,ndx in ssbin.sortTracers() :
         lmax=min(tracers[t1i].lmax,tracers[t2i].lmax)
-        shot_noise[t1i,t2i]=tot_area/np.sqrt(np.sum(tracers[t1i].nzarr)*np.sum(tracers[t2i].nzarr))
-        shot_noise[t2i,t1i]=shot_noise[t1i,t2i]
-        if o.sub_sn:
-            aux=shot_noise[t1i,t2i]
-        if o.sub_sn==False:
-            aux=0.
-        vec[ndx]=cls_all[(t1i,t2i)][np.where(ell_eff<lmax)[0]]-aux
+        vec[ndx]=cls_all[(t1i,t2i)][np.where(ell_eff<lmax)[0]]
     svec=sacc.MeanVec(vec)
-    #If not subtracted, save shot-noise estimation in a binary file
-    if o.sub_sn==False:
-        np.save(o.fname_out+"shot_noise.npy",shot_noise)
     cw = nmt.covariance.NmtCovarianceWorkspace()
     cw.compute_coupling_coefficients(w,w)
+
     #4- Create SACC file and write to file
     csacc=sacc.SACC(stracers,sbin,svec)
+
     #5- Compute covariance if needed
-    if o.compute_theory:
-        print "Computing theoretical prediction"
-        sacc_th = compute_prediction(cat,csacc,w.wsp.lmax)
-        sacc_th.saveToHDF(o.fname_out+"_theory")
-    else:
-        sacc_th = csacc
     if o.compute_covariance:
         print "Computing covariance"
+        sacc_th = csacc
         cov_all={}
         tcov0 = time()
         #This doesn't avoid some repetitions but it is the simplest way
+        ngar=np.array([np.sum(t.nzarr)/tot_area for t in tracers])
         for i1 in np.arange(nbins):
              for i2 in np.arange(i1,nbins):
                  for i3 in np.arange(nbins):
                      for i4 in np.arange(i3,nbins): 
-                         cov_all[(i1,i2,i3,i4)]=compute_covariance(w,sacc_th.mean.vector,sacc_th.binning,i1,i2,i3,i4,np.sum(tracers[i1].nzarr),np.sum(tracers[i2].nzarr),np.sum(tracers[i3].nzarr),np.sum(tracers[i4].nzarr),tot_area,cw)
+                         cov_all[(i1,i2,i3,i4)]=compute_covariance(w,sacc_th.mean.vector,sacc_th.binning,
+                                                                   i1,i2,i3,i4,ngar[i1],ngar[i2],cw)
                          cov_all[(i2,i1,i4,i3)]=cov_all[(i1,i2,i3,i4)]
         cov=np.zeros((ssbin.size(),ssbin.size()))
         for t1i,t2i,ells,ndx in ssbin.sortTracers():

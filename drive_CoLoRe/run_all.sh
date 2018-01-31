@@ -1,13 +1,26 @@
 #!/bin/bash
 
+# #cells per dimension
 ng=4096
+#Smoothing scale
 rsm=2.0
+
+#Number of nodes
 nnod=8
+#Time limit in minutes
 timelim=10
-predir="/global/cscratch1/sd/damonge/sims_LSST"
-rundir=${predir}"/sims_red_noshear/"
-exec_colore="/global/homes/d/damonge/Codes/CoLoRe/CoLoRe"
+#Queue to use
 which_partition="regular"
+
+#Output paths
+predir="/global/cscratch1/sd/damonge/sims_LSST"
+#rundir=${predir}"/sims_red_noshear/"
+rundir=${predir}"/sims_red_noshear_eh/"
+
+#Path to CoLoRe executable
+exec_colore="/global/homes/d/damonge/Codes/CoLoRe/CoLoRe"
+
+#Create all relevant directories (if not already present)
 mkdir -p ${rundir}
 mkdir -p ${rundir}/param_files
 mkdir -p ${rundir}/run_colore_files
@@ -19,14 +32,17 @@ Ob=0.05
 hh=0.70
 s8=0.80
 ns=0.96
-pkname=${predir}/sample_LSST/Pk.txt
 nzname=${predir}/sample_LSST/NzRed.txt
 bzname=${predir}/sample_LSST/BzBlue.txt
 
 #First generate linear power spectrum
-python mkpk.py ${Om} ${Ob} ${hh} ${s8} ${ns} linear boltzmann ${pkname}
+#pkname=${predir}/sample_LSST/Pk.txt
+#python mkpk.py ${Om} ${Ob} ${hh} ${s8} ${ns} linear boltzmann ${pkname}
+pkname=${predir}/sample_LSST/PkEH.txt
+python mkpk.py ${Om} ${Ob} ${hh} ${s8} ${ns} linear eisenstein_hu ${pkname}
 
-for i in {51..100}
+#Launch all simulations. Currently launching 100 of them.
+for i in {1..100}
 do
     parfile=${rundir}/param_files/param_colore_${i}.cfg
     cat > ${parfile} << EOF
