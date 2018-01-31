@@ -40,6 +40,7 @@ To run this part, assuming that you have CoLoRe properly installed and running a
 * Type `/bin/bash run_all.sh` to launch the sims.
 
 Expect each realization to take up ~10 GB of disk space.
+
 **Warning:** we plan on having this process automatized in vc.py, however this is still not ready. As of Jan 31st 2018 no modifications have been made wrt the original version.
 
 
@@ -66,7 +67,7 @@ To compute the power-spectra you have to follow these steps:
 * Open `run_all.sh` in any text editor, and edit it at will. The comments should make it self-explanatory.
 * This script makes use of `namaster_interface.py`. The available command-line options can be found running `python namaster_interface.py -h`.
 * **Warning:** some of these options haven't been tested yet. This includes mpi parallelization, estimating the analytic covariance matrix, taking in an external NmtWorkspace object.
-* **Warning:** this script was also used in the past to compute the theoretical predictions. This is not the case anymore.
+* **Warning:** this script was also used in the past to compute the theoretical predictions. This is not the case anymore (see 4 below).
 * Type `/bin/bash run_all.sh` to process all sims.
 
 
