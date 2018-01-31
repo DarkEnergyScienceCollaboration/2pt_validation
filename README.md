@@ -14,6 +14,8 @@ attick)
 
 https://github.com/DarkEnergyScienceCollaboration/2pt_validation -- this repo that contains various glues between CoLoRe and fastcat, etc.
 
+**Before anything else:** if you're planning on using this repo, it's highly recommendable to read doc/Cookbook.md in detail rather than anything else!
+
 To see how this works in action, look at the following ipython
 notebook,
 
