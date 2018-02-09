@@ -101,7 +101,7 @@ def main():
     bias = interp1d(zbias_arr,bias_arr)
     for iz,z in enumerate(zarr):
         a = 1./(1+z)
-        pklin = ccl.linear_matter_power(cosmo,karr,a)*(hhub**3)
+        pklin = ccl.linear_matter_power(cosmo,karr*hhub,a)*(hhub**3)
         b = bias(z)
         pk = pklin*b*b*np.exp(-rsm2*karr*karr)
         r,xi = ccl.utils.pk2xi(karr,pk)
