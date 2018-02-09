@@ -73,7 +73,8 @@ def main():
     cmd+="%lf "%hhub
     cmd+="%lf "%ns
     cmd+="%lf "%sigma8
-    cmd+=colore_dict['srcs1']['bias_filename']+" "
+    #cmd+=colore_dict['srcs1']['bias_filename']+" "
+    cmd+="inputs/BzBlue.txt "
     cmd+="%lf "%rsm_tot
     cmd+="%lf "%zmax
     cmd+="%lf "%o.dz_ln
@@ -84,6 +85,9 @@ def main():
     else :
         cmd+="0 "
 #    cmd+="> "+o.fname_out+".lnpred_log"
+
+
+    print ("Running",cmd)
     os.system(cmd)
 
     #Read lognormal prediction
@@ -132,12 +136,26 @@ def main():
     csacc.printInfo()
     csacc.saveToHDF(o.fname_out,save_precision=False)
 
+    lnpred_sacc=sacc.SACC.loadFromHDF("inputs/fastcats/GaussPZ_0.02+FullSky+run1+ztrue/theory_ln1_ns2048.sacc")
+    
     if o.show_plot:
         plt.figure()
-        for t in tracers :
-            plt.plot(t.z,t.Nz)
+        # for t in tracers :
+        #     plt.plot(t.z,t.Nz)
+        plt.plot(mean.vector[:100],'b-')
+        #plt.plot(binning_sacc.mean.vector)
+        plt.plot(lnpred_sacc.mean.vector[:100],'r-')
+        plt.semilogy()
         plt.show()
     print('Done')
+
+
+    #if o.show_plot:
+    #    plt.figure()
+    #    for t in tracers :
+    #        plt.plot(t.z,t.Nz)
+    #    plt.show()
+    #print('Done')
 
 if __name__=="__main__":
     main()

@@ -23,6 +23,7 @@ Each one of the required pieces of software has its own installation procedure. 
 **Warning:** as of Jan 31st 2018 some of these dependencies have been significantly updated. Please make sure to:
 - Pull and compile the latest version of CoLoRe (master branch).
 - Pull and install the latest version of NaMaster (master branch).
+- Pull and install the latest version of sacc (master branch).
 - Pull and install the latest version of fastcat (master branch).
 - Pull and install the latest version of CCL (**external_pk** branch. This is the one needed to compute lognormal predictions).
 

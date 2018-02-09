@@ -20,8 +20,8 @@ GSL_LIB = -L/usr/common/software/gsl/2.1/intel/lib
 FFTW_INC = -I/opt/cray/pe/fftw/3.3.6.2/haswell/include
 FFTW_LIB = -L/opt/cray/pe/fftw/3.3.6.2/haswell/lib
 #CCL
-CCL_INC = -I/global/homes/d/damonge/include
-CCL_LIB = -L/global/homes/d/damonge/lib
+CCL_INC = -I/home/anze/local/include
+CCL_LIB = -L/home/anze/local/lib
 #
 ########## End of user-definable ##########
 
@@ -30,7 +30,7 @@ OPTIONS += $(DEFINEFLAGS)
 INC_ALL = -I./src $(GSL_INC) $(FFTW_INC) $(CCL_INC)
 LIB_ALL = $(CCL_LIB) $(GSL_LIB) $(FFTW_LIB) -lccl -lgsl -lgslcblas -lfftw3 -lm
 
-FFTLOGO = src/fftlog.o
+#FFTLOGO = src/fftlog.o
 MAIN = src/main.c
 OFILES = $(FFTLOGO)
 

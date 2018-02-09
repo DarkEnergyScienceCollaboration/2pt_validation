@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import numpy as np
-from scipy import interpolate
+from scipy.interpolate import interp1d
 import pyccl as ccl
 import matplotlib.pyplot as plt
 import sacc
@@ -30,7 +30,7 @@ def main():
     parser.add_option('--output-sacc','-o',dest="fname_out",default=None,
                       help='Name of output SACC file')
     parser.add_option('--show-plot',dest="show_plot",default=False,action="store_true",
-                      help="Show plot comparing data and theory")
+                      help="show plot comparing data and theory")
     parser.add_option('--param-file',dest="param_file",default=None,
                       help="Path to CoLoRe param file")
     parser.add_option('--power-spectrum-type',dest="pk",default='linear',type=str,
@@ -95,42 +95,31 @@ def main():
     Nk=10000
     kmin=1e-3
     kmax=50
-    karr=[kmin*(kmax/kmin)**(float(i)/(Nk-1)) for i in range(Nk)]
+    karr=np.array([kmin*(kmax/kmin)**(float(i)/(Nk-1)) for i in range(Nk)])
     zbias_arr,bias_arr=np.loadtxt('./inputs/BzBlue.txt',unpack=True)
-    for z in zarr:
+    pk2d=np.zeros([numz,Nk])
+    bias = interp1d(zbias_arr,bias_arr)
+    for iz,z in enumerate(zarr):
         a = 1./(1+z)
-        bias = scipy.interpolate.spline(zbias_arr, bias_arr, z)
         pklin = ccl.linear_matter_power(cosmo,karr,a)*(hhub**3)
-        pk = pklin*bias*bias*np.exp(-rsm2*karr*karr)
+        b = bias(z)
+        pk = pklin*b*b*np.exp(-rsm2*karr*karr)
         r,xi = ccl.utils.pk2xi(karr,pk)
-        if do_ln:
+        if o.do_ln:
             xi = np.exp(xi)-1
             karr,pk = ccl.utils.xi2pk(r,xi)
+            idpos=np.where(pk>0)[0];
+            if len(idpos)>0 :
+                idmax=idpos[-1]
+                pk=np.maximum(pk,pk[idmax])
+                w=1./karr**6
+                pk[idmax:]=pk[idmax]*w[idmax:]/w[idmax]
+            pk2d[iz,:]=pk
 
-    #Read lognormal prediction
-    # Note that the lognormal prediction can be negative due to numerical instabilities.
-    # The lines below make sure that the power spectrum is always positive, and extrapolate
-    # it beyond the range where it becomes unreliable
-    numk=len(np.loadtxt(o.fname_out+".lnpred_pk_z0.000.txt",unpack=True)[0])
-    pk2d=np.zeros([numz,numk])
-    aarr=1./(1+zarr)
-    for i in np.arange(numz) :
-        z=o.dz_ln*(numz-1-i)
-        karr,pk,dum1,dum2=np.loadtxt(o.fname_out+".lnpred_pk_z%.3lf.txt"%z,unpack=True)
-        idpos=np.where(pk>0)[0];
-        if len(idpos)>0 :
-            idmax=idpos[-1]
-            pk=np.maximum(pk,pk[idmax])
-            w=1./karr**6
-            pk[idmax:]=pk[idmax]*w[idmax:]/w[idmax]
-        pk2d[i,:]=pk
     pk2d=pk2d.flatten()
     karr*=hhub
     pk2d/=hhub**3
-
-    #Cleanup
-    os.system('rm '+o.fname_out+'.lnpred*')
-    
+    aarr=1./(1.+zarr)
     #Update power spectrum in cosmo to lognormal prediction (both linear and non-linear)
     ccl.update_matter_power(cosmo,karr,aarr,pk2d,is_linear=True)
     ccl.update_matter_power(cosmo,karr,aarr,pk2d,is_linear=False)
@@ -151,10 +140,16 @@ def main():
     csacc.printInfo()
     csacc.saveToHDF(o.fname_out,save_precision=False)
 
+    lnpred_sacc=sacc.SACC.loadFromHDF("inputs/fastcats/GaussPZ_0.02+FullSky+run1+ztrue/theory_ln1_ns2048.sacc")
+    
     if o.show_plot:
         plt.figure()
-        for t in tracers :
-            plt.plot(t.z,t.Nz)
+        # for t in tracers :
+        #     plt.plot(t.z,t.Nz)
+        plt.plot(mean.vector[:100],'b-')
+        #plt.plot(binning_sacc.mean.vector)
+        plt.plot(lnpred_sacc.mean.vector[:100],'r-')
+        plt.semilogy()
         plt.show()
     print('Done')
 
