@@ -64,7 +64,7 @@ def main():
     rsm0=colore_dict['field_par']['r_smooth']
     Lbox=2*ccl.comoving_radial_distance(cosmo,1./(1+zmax))*(1+2./ngrid)*hhub
     a_grid=Lbox/ngrid
-    rsm_tot=np.sqrt(rsm0**2+a_grid**2/12.)
+    rsm_tot=np.sqrt(rsm0**2+a_grid**2/12.)/hhub
     rsm2=rsm_tot*rsm_tot
 
     #Estimate lognormal prediction
@@ -92,8 +92,8 @@ def main():
     '''
     numz=int(zmax/o.dz_ln)
     zarr=o.dz_ln*(numz-1-np.arange(numz))
-    Nk=10000
-    kmin=1e-3
+    Nk=65536
+    kmin=1e-4
     kmax=50
     karr=np.array([kmin*(kmax/kmin)**(float(i)/(Nk-1)) for i in range(Nk)])
     zbias_arr,bias_arr=np.loadtxt('./inputs/BzBlue.txt',unpack=True)
@@ -101,7 +101,7 @@ def main():
     bias = interp1d(zbias_arr,bias_arr)
     for iz,z in enumerate(zarr):
         a = 1./(1+z)
-        pklin = ccl.linear_matter_power(cosmo,karr*hhub,a)*(hhub**3)
+        pklin = ccl.linear_matter_power(cosmo,karr,a)
         b = bias(z)
         pk = pklin*b*b*np.exp(-rsm2*karr*karr)
         r,xi = ccl.utils.pk2xi(karr,pk)
@@ -117,8 +117,6 @@ def main():
             pk2d[iz,:]=pk
 
     pk2d=pk2d.flatten()
-    karr*=hhub
-    pk2d/=hhub**3
     aarr=1./(1.+zarr)
     #Update power spectrum in cosmo to lognormal prediction (both linear and non-linear)
     ccl.update_matter_power(cosmo,karr,aarr,pk2d,is_linear=True)
